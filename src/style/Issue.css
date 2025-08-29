@@ -56,3 +56,134 @@
 .issue-table th {
   background: #f4f4f4;
 }
+
+/* Employee Items Section */
+.employee-items-section {
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.employee-card {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-left: 4px solid #007bff;
+}
+
+.employee-name {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+  font-size: 18px;
+  font-weight: 600;
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 8px;
+}
+
+.items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.item-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+}
+
+.item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.item-name {
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+}
+
+.item-quantity {
+  color: #28a745;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.item-date {
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.item-proof {
+  margin-left: 15px;
+}
+
+.proof-thumbnail {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+}
+
+/* Reset button */
+.reset-btn {
+  background: #dc3545;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: 0.3s;
+}
+
+.reset-btn:hover {
+  background: #c82333;
+  transform: scale(1.02);
+}
+
+/* Back button */
+.back-btn {
+  background: #6c757d;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  margin-top: 15px;
+  transition: 0.3s;
+}
+
+.back-btn:hover {
+  background: #5a6268;
+  transform: scale(1.02);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .item-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .item-proof {
+    margin-left: 0;
+    align-self: center;
+  }
+  
+  .employee-name {
+    font-size: 16px;
+  }
+}

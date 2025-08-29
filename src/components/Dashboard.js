@@ -6,27 +6,59 @@ import AddRemove from "../pages/AddRemove";
 import EmployeeManagement from "../pages/EmployeeManagement";
 import "../style/Dashboard.css";
 
-
 export default function Dashboard({ user, setUser }) {
   const [page, setPage] = useState("home");
 
   const logout = () => {
-    setUser(null);
+    if (window.confirm("Do you want to logout?")) {
+      setUser(null);
+    }
   };
 
-  if (page === "issue") return <Issue goBack={() => setPage("home")} />;
-  if (page === "stock") return <StockCheck goBack={() => setPage("home")} />;
-  if (page === "addremove") return <AddRemove goBack={() => setPage("home")} />;
-  if (page === "employee") return <EmployeeManagement goBack={() => setPage("home")} />;
+  // 🔙 Back button for top-left
+  const BackButton = ({ onClick }) => (
+    <button className="back-btn-fixed" onClick={onClick}>⬅ Back</button>
+  );
+
+  if (page === "issue")
+    return (
+      <>
+        <BackButton onClick={() => setPage("home")} />
+        <Issue goBack={() => setPage("home")} />
+      </>
+    );
+
+  if (page === "stock")
+    return (
+      <>
+        <BackButton onClick={() => setPage("home")} />
+        <StockCheck goBack={() => setPage("home")} />
+      </>
+    );
+
+  if (page === "addremove")
+    return (
+      <>
+        <BackButton onClick={() => setPage("home")} />
+        <AddRemove goBack={() => setPage("home")} />
+      </>
+    );
+
+  if (page === "employee")
+    return (
+      <>
+        <BackButton onClick={() => setPage("home")} />
+        <EmployeeManagement goBack={() => setPage("home")} />
+      </>
+    );
 
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
         <h2>🏗️ GW-Stock Management</h2>
-       <p>
-  Welcome, <b>{user ? user.toUpperCase() : "Guest"}</b>
-</p>
-
+        <p>
+          Welcome, <b>{user ? user.toUpperCase() : "Guest"}</b>
+        </p>
         <button onClick={logout} className="logout-btn">🚪 Logout</button>
       </div>
 

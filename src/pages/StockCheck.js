@@ -1,5 +1,5 @@
 // src/components/pages/StockCheck.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "../style/StockCheck.css";
 
 // === Import your images ===
@@ -57,10 +57,46 @@ export default function StockCheck({ goBack }) {
   });
 
   const [selectedItem, setSelectedItem] = useState("");
+  const [lowStockItems, setLowStockItems] = useState([]);
+
+  useEffect(() => {
+  let lowStockItems = [];
+
+  Object.entries(stock).forEach(([itemName, itemData]) => {
+    Object.entries(itemData.variants).forEach(([variant, v]) => {
+      if (v.balance < 5) {
+        lowStockItems.push(`${itemName} - ${variant} (Balance: ${v.balance})`);
+      }
+    });
+  });
+
+  if (lowStockItems.length > 0) {
+    alert(
+      `⚠️ Low Stock Alert!\n\nThe following items are below minimum level:\n\n${lowStockItems.join(
+        "\n"
+      )}\n\nPlease inform Admin & Boss immediately.`
+    );
+  } else {
+    alert("✅ All stock levels are OK. No low stock found.");
+  }
+}, [stock]);
 
   return (
     <div className="stock-container">
       <h2>📊 Stock Check</h2>
+
+      {/* If low stock exists, show warning banner */}
+      {lowStockItems.length > 0 && (
+        <div className="low-stock-banner">
+          ⚠️ Low Stock Alert:{" "}
+          {lowStockItems.map((item, i) => (
+            <span key={i} className="low-item">
+              {item}
+              {i < lowStockItems.length - 1 ? ", " : ""}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Select Item Dropdown */}
       <div className="form-group">
@@ -122,10 +158,6 @@ export default function StockCheck({ goBack }) {
           </table>
         </div>
       )}
-
-      <button className="back-btn" onClick={goBack}>
-        ⬅ Go Back
-      </button>
     </div>
   );
 }

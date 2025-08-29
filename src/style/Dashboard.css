@@ -83,3 +83,22 @@
     gap: 10px;
   }
 }
+/* Fixed top-left back button */
+.back-btn-fixed {
+  position: fixed;
+  top: 15px;
+  left: 15px;
+  background: #f1f1f1;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  z-index: 1000;
+  transition: background 0.2s ease-in-out;
+}
+
+.back-btn-fixed:hover {
+  background: #e0e0e0;
+}
