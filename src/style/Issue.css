@@ -1,0 +1,58 @@
+.page-container {
+  padding: 20px;
+  max-width: 800px;
+  margin: auto;
+}
+
+.form-group {
+  margin: 15px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.form-group label {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.form-group input,
+.form-group select {
+  padding: 8px;
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.issue-btn {
+  background: linear-gradient(135deg, #43e97b, #38f9d7);
+  border: none;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-size: 16px;
+  color: white;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: 0.3s;
+}
+
+.issue-btn:hover {
+  transform: scale(1.05);
+}
+
+.issue-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.issue-table th,
+.issue-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+
+.issue-table th {
+  background: #f4f4f4;
+}

@@ -1,0 +1,203 @@
+/* === Global Reset === */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+body {
+  background: #f7f9fc;
+  color: #222;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 20px;
+}
+
+/* === App Container === */
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* === Navbar === */
+.navbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.nav-btn {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 6px;
+  background: #e2e8f0;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.nav-btn:hover {
+  background: #cbd5e1;
+}
+
+.nav-btn.active {
+  background: #2563eb;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* === Card === */
+.card {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+  margin-bottom: 20px;
+}
+
+.card h2 {
+  margin-bottom: 15px;
+  font-size: 18px;
+  color: #111;
+}
+
+/* === Table === */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.table th,
+.table td {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.table th {
+  background: #f1f5f9;
+  font-weight: bold;
+}
+
+.table tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+/* === Search Input === */
+.search-input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+/* === Responsive === */
+@media (max-width: 768px) {
+  .table {
+    font-size: 12px;
+  }
+
+  .nav-btn {
+    flex: 1;
+    text-align: center;
+  }
+
+  .search-input {
+    font-size: 12px;
+  }
+}
+/* === Login Page (Responsive & Modern) === */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  padding: 20px;
+  background: linear-gradient(135deg, #0f172a, #1e3a8a, #2563eb);
+}
+
+.login-card {
+  background: #fff;
+  padding: 35px 25px;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+}
+
+.login-title {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #1e3a8a;
+}
+
+.login-sub {
+  font-size: 14px;
+  margin-bottom: 20px;
+  color: #555;
+}
+
+.login-input {
+  width: 100%;
+  padding: 12px 14px;
+  margin: 8px 0;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.eye-btn {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  transition: 0.2s;
+}
+
+.eye-btn:hover {
+  color: #1e3a8a;
+}
+
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  background: #1e3a8a;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  margin-top: 14px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: bold;
+  transition: 0.25s;
+}
+
+.login-btn:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+}
+
+.error-text {
+  color: red;
+  font-size: 13px;
+  margin-top: 6px;
+}
