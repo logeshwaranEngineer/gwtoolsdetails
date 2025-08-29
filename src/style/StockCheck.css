@@ -72,3 +72,231 @@
 .back-btn:hover {
   background: #333;
 }
+
+/* ==== Stock Summary ==== */
+.stock-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.summary-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-5px);
+}
+
+.summary-card h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* ==== Refresh Button ==== */
+.refresh-btn {
+  background: #28a745;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  transition: 0.3s;
+  margin-bottom: 15px;
+}
+
+.refresh-btn:hover {
+  background: #218838;
+  transform: scale(1.02);
+}
+
+/* ==== Status Indicators ==== */
+.status-low {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.status-medium {
+  color: #ffc107;
+  font-weight: bold;
+}
+
+.status-good {
+  color: #28a745;
+  font-weight: bold;
+}
+
+/* ==== All Items Section ==== */
+.all-items-section {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 2px solid #e9ecef;
+}
+
+.all-items-section h3 {
+  color: #495057;
+  margin-bottom: 15px;
+}
+
+/* ==== Enhanced Low Stock Banner ==== */
+.low-stock-banner {
+  background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+  border: 3px solid #f44336;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  color: #c62828;
+  font-weight: 500;
+  box-shadow: 0 4px 20px rgba(244, 67, 54, 0.3);
+  animation: pulse-alert 2s infinite;
+}
+
+@keyframes pulse-alert {
+  0% { box-shadow: 0 4px 20px rgba(244, 67, 54, 0.3); }
+  50% { box-shadow: 0 6px 25px rgba(244, 67, 54, 0.5); }
+  100% { box-shadow: 0 4px 20px rgba(244, 67, 54, 0.3); }
+}
+
+.alert-header {
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 15px;
+  color: #d32f2f;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.alert-content {
+  margin: 15px 0;
+}
+
+.alert-content strong {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: #c62828;
+}
+
+.low-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.low-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #ffcdd2;
+  border-radius: 8px;
+  border-left: 4px solid #f44336;
+  font-weight: 600;
+}
+
+.balance-critical {
+  background: #d32f2f;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.7; }
+}
+
+.alert-action {
+  text-align: center;
+  font-weight: bold;
+  font-size: 16px;
+  color: #d32f2f;
+  margin-top: 15px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+}
+
+/* ==== Form Group ==== */
+.form-group {
+  margin: 15px 0;
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #495057;
+}
+
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* ==== Enhanced Balance Cell ==== */
+.balance-cell.low-stock {
+  background-color: #ffebee;
+  color: #c62828;
+  font-weight: bold;
+}
+
+/* ==== Responsive Design ==== */
+@media (max-width: 768px) {
+  .stock-container {
+    padding: 15px;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+
+  .stock-summary {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+  }
+
+  .summary-card {
+    padding: 15px;
+  }
+
+  .summary-card h4 {
+    font-size: 14px;
+  }
+
+  .stock-table th, .stock-table td {
+    font-size: 12px;
+    padding: 8px;
+  }
+
+  .stock-img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .low-stock-banner {
+    font-size: 12px;
+  }
+
+  .refresh-btn {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+}

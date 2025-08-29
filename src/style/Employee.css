@@ -192,22 +192,138 @@ p {
   background: #d32f2f;
 }
 
+/* ==== Additional Buttons ==== */
+.add-stock-btn {
+  background: #17a2b8;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  margin-left: 10px;
+  transition: 0.3s;
+}
+
+.add-stock-btn:hover {
+  background: #138496;
+  transform: scale(1.02);
+}
+
+.return-btn {
+  background: #ffc107;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  color: #212529;
+  cursor: pointer;
+  font-size: 12px;
+  transition: 0.3s;
+}
+
+.return-btn:hover {
+  background: #e0a800;
+  transform: scale(1.05);
+}
+
+/* ==== Modal Styles ==== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 10px;
+}
+
+.modal-content p {
+  margin: 10px 0;
+  color: #555;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  justify-content: flex-end;
+}
+
+.confirm-btn {
+  background: #28a745;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.confirm-btn:hover {
+  background: #218838;
+  transform: scale(1.02);
+}
+
+.cancel-btn {
+  background: #6c757d;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.cancel-btn:hover {
+  background: #5a6268;
+  transform: scale(1.02);
+}
+
 /* ==== Disabled Button States ==== */
 .issue-btn:disabled,
-.reset-btn:disabled {
+.reset-btn:disabled,
+.add-stock-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none !important;
 }
 
 .issue-btn:disabled:hover,
-.reset-btn:disabled:hover {
+.reset-btn:disabled:hover,
+.add-stock-btn:disabled:hover {
   transform: none !important;
+}
+
+.issue-btn:disabled:hover {
   background: #28a745; /* Keep original color for issue-btn */
 }
 
 .reset-btn:disabled:hover {
   background: #dc3545; /* Keep original color for reset-btn */
+}
+
+.add-stock-btn:disabled:hover {
+  background: #17a2b8; /* Keep original color for add-stock-btn */
 }
 
 /* ==== Responsive Design ==== */
