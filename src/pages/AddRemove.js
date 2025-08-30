@@ -413,6 +413,7 @@ export default function AddRemove({ goBack }) {
                   <input
                     type="text"
                     placeholder="Enter the Label name"
+                    list="label-options"
                     value={f.label}
                     onChange={(e) =>
                       handleDynamicFieldChange(i, "label", e.target.value)
@@ -552,6 +553,15 @@ export default function AddRemove({ goBack }) {
                 <option value="Tool Steel" />
                 <option value="High Carbon" />
               </datalist>
+              <datalist id="label-options">
+    <option value="Quantity" />
+    <option value="Size" />
+    <option value="Color" />
+    <option value="Width" />
+    <option value="Height" />
+    <option value="Material" />
+    <option value="Grade" />
+  </datalist>
             </div>
 
             <div className="modal-actions">
