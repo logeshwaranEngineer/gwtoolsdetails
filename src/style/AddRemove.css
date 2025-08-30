@@ -37,9 +37,9 @@
 }
 
 .filters input, .filters select, .filters button, .filters label {
-  flex: 1 1 150px;
+  flex: 1 1 15px;
   min-width: 120px;
-  padding: 6px 8px;
+  padding: 2px 6px;
 }
 
 /* Items List */
@@ -47,8 +47,23 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
+  overflow-y: auto;
+  max-height: 70vh; /* adjust as needed */
+  padding: 10px;
+  box-sizing: border-box;
 }
 
+/* Optional: make scrollbar look nicer */
+.items-list::-webkit-scrollbar {
+  width: 8px;
+}
+.items-list::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+.items-list::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
 /* Item Card */
 .item-card {
   display: flex;
@@ -60,7 +75,13 @@
 }
 
 .item-card.compact {
-  flex-direction: column;
+   display: flex;
+  flex-direction: row;
+  background: #fff;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  min-height: 120px;
 }
 
 .card-left img.thumb {
@@ -111,17 +132,38 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 999;
+  z-index: 1000;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .modal {
   background: #fff;
   padding: 16px;
+   position: sticky;  
   border-radius: 8px;
   max-width: 500px;
   width: 90%;
 }
 
+.modal h3 {
+  margin-top: 0;
+  position: sticky;       /* keep title visible */
+  top: 0;
+  background: #fff;
+  padding-bottom: 10px;
+  z-index: 10;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+  position: sticky;       /* keep buttons pinned at bottom */
+  bottom: 0;
+  background: #fff;
+  padding-top: 10px;
+}
 .form-group {
   margin-bottom: 12px;
 }
@@ -135,13 +177,14 @@
 
 .spec-field {
   display: flex;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap; /* wraps if inputs are too wide */
 }
 
-.spec-field input {
-  flex: 1;
-  padding: 4px 6px;
+.spec-field input,
+.spec-field select {
+  flex: 1 1 120px; /* makes them responsive and prevents overflow */
 }
 
 .modal-actions {
@@ -167,5 +210,85 @@
 
   .filters input, .filters select, .filters button, .filters label {
     flex: 1 1 180px;
+    
+  }
+}
+.spec-field {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* space between input and button */
+  margin-bottom: 6px;
+}
+
+.spec-field input,
+.spec-field select {
+  flex: 1;
+  padding: 8px;
+}
+
+.spec-field button {
+  flex-shrink: 0; /* prevent shrinking */
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.search-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 200px; /* adjust width as needed */
+}
+
+.search-wrapper input {
+  width: 100%;
+  padding-right: 24px; /* space for the x */
+  box-sizing: border-box;
+}
+
+.clear-btn {
+  position: absolute;
+  right: 5px;
+  top: 30%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #2b2929;
+  font-weight: bold;
+  user-select: none;
+}
+
+.clear-btn:hover {
+  color: #333;
+}
+/* Custom Specification Row - Always horizontal */
+.spec-field {
+  display: flex;
+  flex-wrap: nowrap; /* prevent wrapping to next line */
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.spec-field input,
+.spec-field select {
+  flex: 1; /* take remaining space */
+  min-width: 80px; /* ensures inputs are visible on small screens */
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.spec-field button {
+  flex-shrink: 0; /* do not shrink */
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+/* Mobile tweaks */
+@media (max-width: 767px) {
+  .spec-field input,
+  .spec-field select {
+    font-size: 14px;
+    padding: 6px;
+  }
+
+  .spec-field button {
+    padding: 6px 8px;
   }
 }

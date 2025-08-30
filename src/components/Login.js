@@ -3,7 +3,7 @@ import { validateUser } from "../utils/storage";
 import { Eye, EyeOff } from "lucide-react"; // ✅ password visibility icons
 
 export default function Login({ setUser }) {
-  const [role, setRole] = useState("boss");
+  const [role, setRole] = useState("Admin");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showPass, setShowPass] = useState(false);
