@@ -1,530 +1,305 @@
 import React, { useState, useEffect } from "react";
 import "../style/AddRemove.css";
-import stockService from "../services/stockService";
+import { getAllItems, saveItemToDB, deleteItemFromDB } from "../server/db";
 
 export default function AddRemove({ goBack }) {
+  const defaultCategoriesList = [
+  "FRC ORANGE PANT",
+  "FRC ORANGE SHIRTS",
+  "NORMAL GREY PANT",
+  "NORMAL GREY SHIRT",
+  "NORMAL ORANGE PANT",
+  "NORMAL ORANGE SHIRTS",
+  "NORMAL NAVY BLUE PANT",
+  "SAFETY SHOE",
+  "SAFETY GOGGLE",
+  "EAR PLUG",
+  "NORMAL HAND GLOVES",
+  "ELECTRICAL HAND GLOVES",
+  "WELDING HAND GLOVES",
+  "GRINDING HAND GLOVES",
+  "GARDENING GLOVE",
+  "YELLOW COLOR HELMET",
+  "WHITE COLOR HELMET",
+  "HELMET INNER SIDE",
+  "HELMET CHIN STRIP",
+  "GLOVES HOLDER",
+  "N95 MASK",
+  "PARTICULATE RESPIRATOR MASK",
+  "RESPIRATOR MASK (3M)",
+  "GREEN COLOR VEST",
+  "PINK COLOR VEST",
+  "ORANGE COLOR VEST",
+  "TRAFFIC CONTROL VEST",
+  "MARKER PEN",
+  "FACE SHIELD"
+];
+
   const [items, setItems] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState([defaultCategoriesList]);
   const [form, setForm] = useState({
     category: "",
-    names: [""], // Array of names, starting with one empty name
-    image: null // For image upload
+    names: [""],
+    image: null,
+    imageFile: null,
+    dynamicFields: [],
   });
-  const [searchTerm, setSearchTerm] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(12); // Show 12 items per page
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Login state for delete visibility
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginPassword, setLoginPassword] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // Load data on component mount
+  // Filters
+  const [searchText, setSearchText] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [dateRange, setDateRange] = useState({ start: "", end: "" });
+
+  // Fetch items
   useEffect(() => {
-    loadData();
+    async function fetchItems() {
+      const allItems = await getAllItems();
+      setItems(allItems);
+      // Merge DB categories with default list
+    const dbCategories = [...new Set(allItems.map(i => i.category))];
+    const mergedCategories = Array.from(new Set([...defaultCategoriesList, ...dbCategories]));
+    setCategories(mergedCategories);
+    }
+    fetchItems();
   }, []);
 
-  const loadData = () => {
-    // Load items from localStorage
-    const savedItems = localStorage.getItem("addRemoveItems");
-    if (savedItems) {
-      const parsedItems = JSON.parse(savedItems);
-      setItems(parsedItems);
-      
-      // Extract unique categories
-      const uniqueCategories = [...new Set(parsedItems.map(item => item.category))];
-      setCategories(uniqueCategories);
-    }
-  };
-
-  // Save items to localStorage
-  const saveItems = (newItems) => {
-    localStorage.setItem("addRemoveItems", JSON.stringify(newItems));
-    setItems(newItems);
-    
-    // Update categories
-    const uniqueCategories = [...new Set(newItems.map(item => item.category))];
-    setCategories(uniqueCategories);
-  };
-
-  const handleCategoryChange = (e) => {
-    setForm({ ...form, category: e.target.value });
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setForm({ ...form, image: e.target.result });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Login functionality
-  const handleLogin = () => {
-    if (loginPassword === "admin123") { // Simple password check
-      setIsLoggedIn(true);
-      setShowLoginModal(false);
-      setLoginPassword("");
-      alert("✅ Logged in successfully! Delete options are now visible.");
-    } else {
-      alert("❌ Incorrect password!");
-    }
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    alert("✅ Logged out successfully!");
-  };
-
-  const handleNameChange = (index, value) => {
-    const newNames = [...form.names];
-    newNames[index] = value;
-    setForm({ ...form, names: newNames });
-  };
-
-  // Add more name fields (up to 10)
-  const addNameField = () => {
-    if (form.names.length < 10) {
-      setForm({ ...form, names: [...form.names, ""] });
-    }
-  };
-
-  // Remove name field
-  const removeNameField = (index) => {
-    if (form.names.length > 1) {
-      const newNames = form.names.filter((_, i) => i !== index);
-      setForm({ ...form, names: newNames });
-    }
-  };
-
-  // Open modal for add
-  const openAddModal = () => {
-    setEditingItem(null);
-    setForm({
-      category: "",
-      names: [""],
-      image: null
-    });
-    setShowModal(true);
-  };
-
-  // Open modal for edit
-  const openEditModal = (item) => {
-    setEditingItem(item);
-    setForm({
-      category: item.category,
-      names: item.names || [item.name], // Handle old format
-      image: item.image || null
-    });
-    setShowModal(true);
-  };
-
-  // Save item (add or edit)
-  const saveItem = () => {
-    // No validation as requested
-    const validNames = form.names.filter(name => name.trim() !== "");
-    
-    if (validNames.length === 0) {
-      return; // At least one name should be provided
+  // Save item
+  const saveItem = async () => {
+    if (!form.category.trim()) {
+      alert("Category required");
+      return;
     }
 
     const newItem = {
       id: editingItem ? editingItem.id : Date.now(),
       category: form.category,
-      names: validNames,
+      names: form.names.filter(n => n.trim() !== ""),
       image: form.image,
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString()
+      dynamicFields: form.dynamicFields.filter(f => f.label && f.value),
+      date: new Date().toISOString(),
     };
 
-    let updatedItems;
-    if (editingItem) {
-      // Edit existing item
-      updatedItems = items.map(item => 
-        item.id === editingItem.id ? newItem : item
-      );
-    } else {
-      // Add new item
-      updatedItems = [...items, newItem];
-    }
-
-    saveItems(updatedItems);
+    await saveItemToDB(newItem);
+    const updatedItems = await getAllItems();
+    setItems(updatedItems);
+    setCategories([...new Set(updatedItems.map(i => i.category))]);
     setShowModal(false);
-    setForm({ category: "", names: [""], image: null });
+    setForm({ category: "", names: [""], image: null, imageFile: null, dynamicFields: [] });
+    setEditingItem(null);
   };
 
-  // Delete item
-  const deleteItem = (item) => {
-    if (window.confirm(`⚠️ Do you want to remove "${item.category}" with ${item.names.length} item(s)?\n\nThis action cannot be undone.`)) {
-      const updatedItems = items.filter(i => i.id !== item.id);
-      saveItems(updatedItems);
-      alert("✅ Item removed successfully!");
-    }
-  };
+  // Image handler
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  // Helper function to parse date string to Date object and normalize to start of day
-  const parseItemDate = (dateString) => {
-    // Handle different date formats (MM/DD/YYYY, DD/MM/YYYY, etc.)
-    const parts = dateString.split('/');
-    let date;
-    if (parts.length === 3) {
-      // Assuming MM/DD/YYYY format (US format)
-      date = new Date(parts[2], parts[0] - 1, parts[1]);
-    } else {
-      date = new Date(dateString);
-    }
-    // Set to start of day (00:00:00) for accurate comparison
-    date.setHours(0, 0, 0, 0);
-    return date;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setForm(prev => ({ ...prev, image: ev.target.result, imageFile: file }));
+    };
+    reader.readAsDataURL(file);
   };
+const handleDelete = async (id) => {
+  if (!window.confirm("Are you sure you want to delete this item?")) return;
 
-  // Filter items based on search and date
+  try {
+    await deleteItemFromDB(id); // pass only the ID
+    const updatedItems = await getAllItems();
+    setItems(updatedItems);
+  } catch (err) {
+    console.error("Delete failed:", err);
+    alert("Failed to delete item. Check console for details.");
+  }
+};
+
+  // Filters
   const filteredItems = items.filter(item => {
-    const matchesSearch = !searchTerm || 
-      item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.names.some(name => name.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    // Date range filter
-    let matchesDateRange = true;
-    if (startDate || endDate) {
-      const itemDate = parseItemDate(item.date);
-      
-      if (startDate && endDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0); // Start of start date
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999); // End of end date
-        matchesDateRange = itemDate >= start && itemDate <= end;
-      } else if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0); // Start of start date
-        matchesDateRange = itemDate >= start;
-      } else if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999); // End of end date
-        matchesDateRange = itemDate <= end;
-      }
-    }
-    
-    return matchesSearch && matchesDateRange;
+    const matchesText =
+      searchText === "" ||
+      item.category.toLowerCase().includes(searchText.toLowerCase()) ||
+      item.names.some(n => n.toLowerCase().includes(searchText.toLowerCase())) ||
+      item.dynamicFields.some(f => `${f.label} ${f.value}`.toLowerCase().includes(searchText.toLowerCase()));
+
+    const matchesCategory = filterCategory === "" || item.category === filterCategory;
+
+    const itemDate = new Date(item.date);
+    const startDate = dateRange.start ? new Date(dateRange.start) : null;
+    const endDate = dateRange.end ? new Date(dateRange.end) : null;
+
+    const matchesDate =
+      (!startDate || itemDate >= startDate) &&
+      (!endDate || itemDate <= endDate);
+
+    return matchesText && matchesCategory && matchesDate;
   });
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentItems = filteredItems.slice(startIndex, endIndex);
-
-  // Reset to first page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, startDate, endDate]);
-
-  const clearDateFilters = () => {
-    setStartDate("");
-    setEndDate("");
+  // Form handlers
+  const handleCategoryChange = (e) => setForm({ ...form, category: e.target.value });
+  const handleNameChange = (i, value) => {
+    const newNames = [...form.names];
+    newNames[i] = value;
+    setForm({ ...form, names: newNames });
   };
+  const addNameField = () => { if (form.names.length < 10) setForm({ ...form, names: [...form.names, ""] }); };
+  const removeNameField = (i) => setForm({ ...form, names: form.names.filter((_, idx) => idx !== i) });
+  const addDynamicField = () => setForm({ ...form, dynamicFields: [...form.dynamicFields, { label: "", value: "" }] });
+  const removeDynamicField = (i) => setForm({ ...form, dynamicFields: form.dynamicFields.filter((_, idx) => idx !== i) });
+  const handleDynamicFieldChange = (i, key, value) => {
+    const updated = [...form.dynamicFields];
+    updated[i][key] = value;
+    setForm({ ...form, dynamicFields: updated });
+  };
+
+  // Modal
+  const openAddModal = () => {
+    setEditingItem(null);
+    setForm({ category: "", names: [""], image: null, imageFile: null, dynamicFields: [] });
+    setShowModal(true);
+  };
+  const openEditModal = (item) => {
+    setEditingItem(item);
+    setForm({
+      category: item.category,
+      names: item.names || [""],
+      image: item.image || null,
+      dynamicFields: item.dynamicFields || []
+    });
+    setShowModal(true);
+  };
+
+  // Admin login
+  const handleLogin = () => {
+    if (loginPassword === "admin123") {
+      setIsLoggedIn(true);
+      setShowLoginModal(false);
+      setLoginPassword("");
+    } else alert("❌ Wrong password!");
+  };
+  const handleLogout = () => setIsLoggedIn(false);
+  const resetFilters = () => { setSearchText(""); setFilterCategory(""); setDateRange({ start: "", end: "" }); };
 
   return (
     <div className="addremove-container">
       <div className="header">
-        <h2>➕ Add Items</h2>
-        <div className="header-actions">
+        <h2>📦 Manage Inventory</h2>
+        <div>
           {!isLoggedIn ? (
-            <button className="login-btn" onClick={() => setShowLoginModal(true)}>
-              🔐 Login for Delete Access
-            </button>
+            <button className="login-btn" onClick={() => setShowLoginModal(true)}>🔐 Login</button>
           ) : (
-            <button className="logout-btn" onClick={handleLogout}>
-              🚪 Logout
-            </button>
+            <button className="logout-btn" onClick={handleLogout}>🚪 Logout</button>
           )}
         </div>
       </div>
 
-      <p className="note">📌 Manage your items - Add, edit, and organize your inventory with images:</p>
+      <button className="add-btn" onClick={openAddModal}>➕ Add Item</button>
 
-      {/* Category Title Input */}
-      {searchTerm && (
-        <div className="category-title-display">
-          <h3>📂 Showing results for: "{searchTerm}"</h3>
-        </div>
-      )}
-
-      {/* Search and Filter Section */}
-      <div className="search-filter-section">
-        <div className="search-box">
-          <input
-            type="text"
-            placeholder="🔍 Search by category or name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-        </div>
-        
-        {/* Date Range Filter */}
-        <div className="date-filter-container">
-          <div className="date-range-inputs">
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="date-input"
-              placeholder="Start date"
-            />
-            <span className="date-separator">to</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="date-input"
-              placeholder="End date"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Active Filters Display */}
-      {(searchTerm || startDate || endDate) && (
-        <div className="active-filters">
-          <h4>🔍 Active Filters:</h4>
-          <div className="filter-tags">
-            {searchTerm && (
-              <span className="filter-tag">
-                Search: "{searchTerm}"
-                <button onClick={() => setSearchTerm("")}>✕</button>
-              </span>
-            )}
-            {(startDate || endDate) && (
-              <span className="filter-tag">
-                Date Range: {startDate ? new Date(startDate).toLocaleDateString() : 'Start'} - {endDate ? new Date(endDate).toLocaleDateString() : 'End'}
-                <button onClick={() => { setStartDate(""); setEndDate(""); }}>✕</button>
-              </span>
-            )}
-            <button className="clear-all-filters" onClick={clearDateFilters}>
-              Clear All Filters
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Add Button */}
-      <div className="actions">
-        <button className="add-btn" onClick={openAddModal}>➕ Add New Item</button>
+      {/* Filters */}
+      <div className="filters">
+        <input type="text" placeholder="🔍 Search by text..." value={searchText} onChange={e => setSearchText(e.target.value)} />
+        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+          <option value="">All Categories</option>
+          {categories.map((c, i) => <option key={i} value={c}>{c}</option>)}
+        </select>
+        <label>Start Date: <input type="date" value={dateRange.start} onChange={e => setDateRange({ ...dateRange, start: e.target.value })} /></label>
+        <label>End Date: <input type="date" value={dateRange.end} onChange={e => setDateRange({ ...dateRange, end: e.target.value })} /></label>
+        <button onClick={resetFilters}>Reset Filters</button>
       </div>
 
       {/* Items List */}
-      <div className="items-overview">
-        <div className="items-header">
-          <h3>📊 Items List ({filteredItems.length})</h3>
-          {filteredItems.length > itemsPerPage && (
-            <div className="pagination-info">
-              Showing {startIndex + 1}-{Math.min(endIndex, filteredItems.length)} of {filteredItems.length} items
+      <div className="items-list">
+        {filteredItems.length === 0 && <p>No items found.</p>}
+        {filteredItems.map(item => (
+          <div key={item.id} className="item-card compact">
+            <div className="card-left">
+              {item.image ? <img src={item.image} alt={item.category} className="thumb" /> : <div className="no-thumb">📷</div>}
             </div>
-          )}
-        </div>
-        
-        {filteredItems.length === 0 ? (
-          <div className="no-items">
-            <p>No items found. Click "Add New Item" to create your first item.</p>
-          </div>
-        ) : (
-          <>
-            <div className="items-grid">
-              {currentItems.map((item) => (
-                <div key={item.id} className="item-card">
-                  {/* Item Image */}
-                  <div className="item-image">
-                    {item.image ? (
-                      <img src={item.image} alt={item.category} className="card-image" />
-                    ) : (
-                      <div className="no-image">
-                        <span>📷</span>
-                        <p>No Image</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="item-header">
-                    <h4 className="item-category">📂 {item.category}</h4>
-                    <div className="item-actions">
-                      <button 
-                        className="edit-btn" 
-                        onClick={() => openEditModal(item)}
-                        title="Edit item"
-                      >
-                        ✏️
-                      </button>
-                      {isLoggedIn && (
-                        <button 
-                          className="delete-btn" 
-                          onClick={() => deleteItem(item)}
-                          title="Delete item (Admin only)"
-                        >
-                          🗑️
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="item-content">
-                    <div className="item-names">
-                      <strong>📌 Items ({item.names.length}):</strong>
-                      <div className="names-list">
-                        {item.names.map((name, idx) => (
-                          <span key={idx} className="name-tag">
-                            {name}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="item-meta">
-                      <span className="item-date">📅 {item.date}</span>
-                      <span className="item-time">🕐 {item.time}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="pagination">
-                <button 
-                  className="page-btn"
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                >
-                  ⬅️ Previous
-                </button>
-                
-                <div className="page-numbers">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      className={`page-number ${currentPage === page ? 'active' : ''}`}
-                      onClick={() => setCurrentPage(page)}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                </div>
-                
-                <button 
-                  className="page-btn"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next ➡️
-                </button>
+            <div className="card-right">
+              <div className="card-header">
+                <h4 className="category">{item.category}</h4>
               </div>
-            )}
-          </>
-        )}
+                <div className="actions">
+                  <button onClick={() => openEditModal(item)}>Edit</button>
+                  {isLoggedIn && <button onClick={() => handleDelete(item)}>Delete</button>}
+                </div>
+              {item.names?.length > 0 && <div className="chips">{item.names.map((n, i) => <span key={i} className="chip">{n}</span>)}</div>}
+              {item.dynamicFields?.length > 0 && <div className="specs">{item.dynamicFields.map((f, i) => <span key={i} className="spec-chip">{f.label}: {f.value}</span>)}</div>}
+              <div className="meta">
+                <span>📅 {item.date}</span>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal">
-            <h3>{editingItem ? "✏️ Edit Item" : "➕ Add New Item"}</h3>
+            <h3>{editingItem ? "Edit Item" : "➕ Add Item"}</h3>
 
-            {/* Image Upload */}
             <div className="form-group">
-              <label>📷 Item Image:</label>
-              <div className="image-upload-section">
-                {form.image && (
-                  <div className="image-preview">
-                    <img src={form.image} alt="Preview" className="preview-image" />
-                  </div>
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="image-input"
-                  id="image-upload"
-                />
-                <label htmlFor="image-upload" className="image-upload-btn">
-                  📷 {form.image ? "Change Image" : "Upload Image"}
-                </label>
-              </div>
+              <label>Image (Required)*</label>
+              {form.image && <img src={form.image} alt="preview" className="preview" />}
+              <input type="file" accept="image/*" onChange={handleImageChange} />
             </div>
 
-            {/* Category Field */}
             <div className="form-group">
-              <label>📂 Category:</label>
-              {categories.length > 0 ? (
-                <select
-                  value={form.category}
-                  onChange={handleCategoryChange}
-                  className="category-select"
-                >
-                  <option value="">-- Select or type new category --</option>
-                  {categories.map((cat, idx) => (
-                    <option key={idx} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              ) : null}
+              <label>Category (Required)*</label>
               <input
+                list="category-options"
                 type="text"
-                placeholder="Enter category name"
                 value={form.category}
                 onChange={handleCategoryChange}
-                className="category-input"
+                placeholder="Enter or select a category"
               />
+              <datalist id="category-options">
+                {categories.map((c, i) => <option key={i} value={c} />)}
+              </datalist>
             </div>
 
-            {/* Names Fields */}
-            <div className="form-group">
-              <label>📌 Item Names (up to 10):</label>
-              {form.names.map((name, index) => (
-                <div key={index} className="name-field">
-                  <input
-                    type="text"
-                    placeholder={`Item name ${index + 1}`}
-                    value={name}
-                    onChange={(e) => handleNameChange(index, e.target.value)}
-                    className="name-input"
-                  />
-                  {form.names.length > 1 && (
-                    <button
-                      type="button"
-                      className="remove-name-btn"
-                      onClick={() => removeNameField(index)}
-                    >
-                      ➖
-                    </button>
-                  )}
+            {/* <div className="form-group">
+              <label>Custom Specifications (Optional)</label>
+              {form.dynamicFields.map((f, i) => (
+                <div key={i} className="spec-field">
+                  <input type="text" placeholder="Label" value={f.label} onChange={e => handleDynamicFieldChange(i, "label", e.target.value)} />
+                  <input type="text" placeholder="Value" value={f.value} onChange={e => handleDynamicFieldChange(i, "value", e.target.value)} />
+                  <button onClick={() => removeDynamicField(i)}>DELETE🗑️</button>
                 </div>
               ))}
-              
-              {form.names.length < 10 && (
-                <button
-                  type="button"
-                  className="add-name-btn"
-                  onClick={addNameField}
-                >
-                  ➕ Add More Names ({form.names.length}/10)
-                </button>
-              )}
-            </div>
+              <button onClick={addDynamicField}>➕ Add Spec</button>
+            </div> */}
+<div className="form-group">
+  <label>Custom Specifications (Optional)</label>
+  {form.dynamicFields.map((f, i) => (
+    <div key={i} className="spec-field">
+      <input
+        type="text"
+        placeholder="Label"
+        value={f.label}
+        onChange={e => handleDynamicFieldChange(i, "label", e.target.value)}
+      />
+      <input
+        type="text"
+        placeholder="Value"
+        value={f.value}
+        onChange={e => handleDynamicFieldChange(i, "value", e.target.value)}
+      />
+      <button type="button" onClick={() => removeDynamicField(i)}>
+        🗑️
+      </button>
+    </div>
+  ))}
+  <button type="button" onClick={addDynamicField}>➕ Add Spec</button>
+</div>
 
             <div className="modal-actions">
-              <button className="confirm-btn" onClick={saveItem}>
-                ✅ {editingItem ? "Update Item" : "Save Item"}
-              </button>
-              <button className="cancel-btn" onClick={() => {
-                setShowModal(false);
-                setForm({ category: "", names: [""], image: null });
-                setEditingItem(null);
-              }}>❌ Cancel</button>
+              <button onClick={saveItem}>✅ {editingItem ? "Update" : "Save"}</button>
+              <button onClick={() => setShowModal(false)}>❌ Cancel</button>
             </div>
           </div>
         </div>
@@ -533,32 +308,13 @@ export default function AddRemove({ goBack }) {
       {/* Login Modal */}
       {showLoginModal && (
         <div className="modal-overlay">
-          <div className="modal login-modal">
+          <div className="modal">
             <h3>🔐 Admin Login</h3>
-            <p>Enter password to access delete functionality:</p>
-            
-            <div className="form-group">
-              <input
-                type="password"
-                placeholder="Enter admin password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                className="password-input"
-                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-              />
-            </div>
-
+            <input type="password" placeholder="Enter password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} onKeyPress={e => e.key === "Enter" && handleLogin()} />
             <div className="modal-actions">
-              <button className="confirm-btn" onClick={handleLogin}>
-                ✅ Login
-              </button>
-              <button className="cancel-btn" onClick={() => {
-                setShowLoginModal(false);
-                setLoginPassword("");
-              }}>❌ Cancel</button>
+              <button onClick={handleLogin}>✅ Login</button>
+              <button onClick={() => setShowLoginModal(false)}>❌ Cancel</button>
             </div>
-            
-            <p className="login-hint">💡 Hint: Default password is "admin123"</p>
           </div>
         </div>
       )}
