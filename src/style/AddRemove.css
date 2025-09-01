@@ -52,7 +52,15 @@
   padding: 10px;
   box-sizing: border-box;
 }
-
+.item-card,
+.chip,
+.spec-chip,
+.modal input,
+.modal select,
+.spec-field input,
+.spec-field select {
+  font-size: 18px; /* bigger font for readability */
+}
 /* Optional: make scrollbar look nicer */
 .items-list::-webkit-scrollbar {
   width: 8px;
@@ -291,4 +299,16 @@
   .spec-field button {
     padding: 6px 8px;
   }
+}
+.dynamic-specs-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dynamic-specs-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.dynamic-specs-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
