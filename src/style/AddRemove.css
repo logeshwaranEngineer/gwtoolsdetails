@@ -2,7 +2,8 @@
   padding: 16px;
   max-width: 1200px;
   margin: auto;
-  font-family: sans-serif;
+  font-family: "Segoe UI", sans-serif;
+  color: #222;
 }
 
 /* Header */
@@ -11,47 +12,64 @@
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+}
+.header h2 {
+  font-size: 24px;
+  font-weight: bold;
 }
 
 .add-btn, .login-btn, .logout-btn, .filters button {
-  padding: 8px 12px;
+   padding: 10px 14px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   background-color: #007bff;
   color: #fff;
   margin: 4px;
+  transition: all 0.2s ease;
+  font-size: 14px;
 }
 
 .add-btn:hover, .login-btn:hover, .logout-btn:hover, .filters button:hover {
   background-color: #0056b3;
+    transform: translateY(-1px);
 }
 
-/* Filters */
+/* --- Filters Toolbar --- */
 .filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 16px 0;
+  gap: 10px;
+  margin: 20px 0;
+  background: #f9f9f9;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
-.filters input, .filters select, .filters button, .filters label {
-  flex: 1 1 15px;
-  min-width: 120px;
-  padding: 2px 6px;
+.filters input, .filters select {
+  flex: 1 1 160px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
 }
 
 /* Items List */
 .items-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;
   overflow-y: auto;
-  max-height: 70vh; /* adjust as needed */
+  max-height: 70vh;
   padding: 10px;
   box-sizing: border-box;
 }
+
 .item-card,
 .chip,
 .spec-chip,

@@ -41,6 +41,22 @@ export default function AddRemove({ goBack }) {
     });
   };
 
+  // === Saved Labels (persistent) ===
+  const [savedLabels, setSavedLabels] = useState(() => {
+    const stored = localStorage.getItem("savedLabels");
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  const saveLabel = (label) => {
+    if (!label.trim()) return;
+    setSavedLabels((prev) => {
+      const updated = [...new Set([...prev, label])];
+      localStorage.setItem("savedLabels", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // === States ===
   const [items, setItems] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -52,15 +68,6 @@ export default function AddRemove({ goBack }) {
     imageFile: null,
     dynamicFields: [],
   });
-
-  const getSizeOptions = (category) => {
-    if (!category) return [];
-    const cat = category.toLowerCase();
-    if (cat.includes("shoe")) return ["6", "7", "8", "9", "10"];
-    if (cat.includes("shirt")) return ["XS", "S", "M", "L", "XL", "XXL"];
-    if (cat.includes("pant")) return ["28", "30", "32", "34", "36"];
-    return [];
-  };
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginPassword, setLoginPassword] = useState("");
@@ -110,13 +117,13 @@ export default function AddRemove({ goBack }) {
     setEditingItem(null);
   };
 
-  // === Image Selection (Capture or Upload) ===
+  // === Image Selection ===
   const handleImageSelect = () => {
     const choice = window.confirm("Click OK to capture a photo, Cancel to upload from files.");
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
-    if (choice) input.capture = "environment"; // Camera
+    if (choice) input.capture = "environment";
     input.onchange = handleImageChange;
     input.click();
   };
@@ -164,40 +171,44 @@ export default function AddRemove({ goBack }) {
     return matchesText && matchesCategory && matchesDate;
   });
 
-  // Form handlers
-  const handleCategoryChange = (e) => setForm({ ...form, category: e.target.value });
-  const handleNameChange = (i, value) => {
-    const newNames = [...form.names];
-    newNames[i] = value;
-    const uniqueNames = newNames.filter((name, idx) => name.trim() !== "" && newNames.indexOf(name) === idx);
-    setForm({ ...form, names: uniqueNames });
-  };
-  const addNameField = () => {
-    if (form.names.length < 10) setForm({ ...form, names: [...form.names, ""] });
-  };
-  const removeNameField = (i) => setForm({ ...form, names: form.names.filter((_, idx) => idx !== i) });
-
+  // === Dynamic Field Handlers ===
   const addDynamicField = () => {
-    setForm({ ...form, dynamicFields: [...form.dynamicFields, { label: "", value: "" }] });
+    let newField = { label: "", value: "" };
+
+    // If there are saved labels not used yet, auto-assign one
+    const unusedLabels = savedLabels.filter(
+      (l) => !form.dynamicFields.some((f) => f.label === l)
+    );
+    if (unusedLabels.length > 0) {
+      newField.label = unusedLabels[0];
+    }
+
+    setForm({ ...form, dynamicFields: [...form.dynamicFields, newField] });
+
     setTimeout(() => {
       const container = document.querySelector(".dynamic-specs-container");
       if (container) container.scrollTop = container.scrollHeight;
     }, 50);
   };
+
   const removeDynamicField = (i) =>
     setForm({ ...form, dynamicFields: form.dynamicFields.filter((_, idx) => idx !== i) });
+
   const handleDynamicFieldChange = (i, key, value) => {
     const updated = [...form.dynamicFields];
     updated[i][key] = value;
     setForm({ ...form, dynamicFields: updated });
 
-    // Save spec option persistently
+    if (key === "label" && value) {
+      saveLabel(value);
+    }
+
     if (key === "value" && updated[i].label) {
       saveSpecOption(updated[i].label.toLowerCase(), value);
     }
   };
 
-  // Modal
+  // === Modal ===
   const openAddModal = () => {
     setEditingItem(null);
     setForm({ category: "", names: [""], image: null, imageFile: null, dynamicFields: [] });
@@ -205,7 +216,12 @@ export default function AddRemove({ goBack }) {
   };
   const openEditModal = (item) => {
     setEditingItem(item);
-    setForm({ category: item.category, names: item.names || [""], image: item.image || null, dynamicFields: item.dynamicFields || [] });
+    setForm({
+      category: item.category,
+      names: item.names || [""],
+      image: item.image || null,
+      dynamicFields: item.dynamicFields || [],
+    });
     setShowModal(true);
   };
 
@@ -301,7 +317,7 @@ export default function AddRemove({ goBack }) {
             {/* Category */}
             <div className="form-group">
               <label>Category (Required)*</label>
-              <input list="category-options" type="text" value={form.category} onChange={handleCategoryChange} placeholder="Enter or select a category" />
+              <input list="category-options" type="text" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Enter or select a category" />
               <datalist id="category-options">{categories.map((c, i) => <option key={i} value={c} />)}</datalist>
             </div>
 
@@ -335,7 +351,9 @@ export default function AddRemove({ goBack }) {
               <datalist id="quantity-options">{specOptions.quantity.map((o,i)=><option key={i} value={o}/>)}</datalist>
               <datalist id="width-options">{specOptions.width.map((o,i)=><option key={i} value={o}/>)}</datalist>
               <datalist id="height-options">{specOptions.height.map((o,i)=><option key={i} value={o}/>)}</datalist>
-              <datalist id="label-options"><option value="Quantity"/><option value="Size"/><option value="Color"/><option value="Width"/><option value="Height"/><option value="Material"/><option value="Grade"/></datalist>
+              <datalist id="label-options">
+                {["Quantity","Size","Color","Width","Height","Material","Grade", ...savedLabels].map((l,i)=><option key={i} value={l}/>)}
+              </datalist>
             </div>
 
             <div className="modal-actions">
