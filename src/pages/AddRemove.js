@@ -12,6 +12,29 @@ export default function AddRemove({ goBack }) {
     "N95 MASK", "PARTICULATE RESPIRATOR MASK", "RESPIRATOR MASK (3M)", "GREEN COLOR VEST",
     "PINK COLOR VEST", "ORANGE COLOR VEST", "TRAFFIC CONTROL VEST", "MARKER PEN", "FACE SHIELD",
   ];
+ // Filters
+  const [searchText, setSearchText] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [dateRange, setDateRange] = useState({ start: "", end: "" });
+  // Fetch items
+  useEffect(() => {
+    async function fetchItems() {
+      try {
+        const allItems = (await getAllItems()) || [];
+        // sort newest first
+    allItems.sort((a, b) => new Date(b.date) - new Date(a.date));
+        setItems(allItems);
+        const dbCategories = [...new Set(allItems.map((i) => i.category).filter(Boolean))];
+        const mergedCategories = Array.from(new Set([...defaultCategoriesList, ...dbCategories]));
+        setCategories(mergedCategories);
+      } catch (e) {
+        console.error('Failed to load items', e);
+        setItems([]);
+        setCategories(defaultCategoriesList);
+      }
+    }
+    fetchItems();
+  }, []);
 
   // === Default Spec Options ===
   const defaultSpecOptions = {
@@ -25,8 +48,14 @@ export default function AddRemove({ goBack }) {
   };
 
   const [specOptions, setSpecOptions] = useState(() => {
-    const stored = localStorage.getItem("specOptions");
-    return stored ? JSON.parse(stored) : defaultSpecOptions;
+    try {
+      const stored = localStorage.getItem("specOptions");
+      const parsed = stored ? JSON.parse(stored) : null;
+      // validate shape minimally
+      return parsed && typeof parsed === 'object' ? { ...defaultSpecOptions, ...parsed } : defaultSpecOptions;
+    } catch {
+      return defaultSpecOptions;
+    }
   });
 
   const saveSpecOption = (key, value) => {
@@ -43,8 +72,13 @@ export default function AddRemove({ goBack }) {
 
   // === Saved Labels (persistent) ===
   const [savedLabels, setSavedLabels] = useState(() => {
-    const stored = localStorage.getItem("savedLabels");
-    return stored ? JSON.parse(stored) : [];
+    try {
+      const stored = localStorage.getItem("savedLabels");
+      const parsed = stored ? JSON.parse(stored) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   });
 
   const saveLabel = (label) => {
@@ -72,24 +106,32 @@ export default function AddRemove({ goBack }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginPassword, setLoginPassword] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
-
-  // Filters
-  const [searchText, setSearchText] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
-  const [dateRange, setDateRange] = useState({ start: "", end: "" });
-
-  // Fetch items
-  useEffect(() => {
-    async function fetchItems() {
-      const allItems = await getAllItems();
-      setItems(allItems);
-      const dbCategories = [...new Set(allItems.map((i) => i.category))];
-      const mergedCategories = Array.from(new Set([...defaultCategoriesList, ...dbCategories]));
-      setCategories(mergedCategories);
+ const [showTemplateModal, setShowTemplateModal] = useState(false);
+ const [templates, setTemplates] = useState(() => {
+  try {
+    const saved = localStorage.getItem("templates");
+    const parsed = saved ? JSON.parse(saved) : [];
+    // We use single active template as first element: an array of {label, value}
+    if (Array.isArray(parsed) && parsed.length > 0 && Array.isArray(parsed[0])) {
+      return parsed;
     }
-    fetchItems();
-  }, []);
+    return [[]];
+  } catch {
+    return [[]];
+  }
+});
 
+
+
+ 
+// const addTemplateLabel = () => setTemplateLabels([...templateLabels, ""]);
+// const removeTemplateLabel = (i) => setTemplateLabels(templateLabels.filter((_, idx) => idx !== i));
+// const handleTemplateLabelChange = (i, val) => {
+//   const updated = [...templateLabels];
+//   updated[i] = val;
+//   setTemplateLabels(updated);
+// };
+  
   // Save item
   const saveItem = async () => {
     if (!form.category.trim()) {
@@ -100,18 +142,39 @@ export default function AddRemove({ goBack }) {
       alert("Image required");
       return;
     }
+
+    const safeDynamicFields = (Array.isArray(form.dynamicFields) ? form.dynamicFields : [])
+      .filter((f) => (f.label || "").trim() && (f.value || "").trim());
+
     const newItem = {
       id: editingItem ? editingItem.id : Date.now(),
       category: form.category,
-      names: form.names.filter((n) => n.trim() !== ""),
+      names: (Array.isArray(form.names) ? form.names : []).filter((n) => (n || "").trim() !== ""),
       image: form.image,
-      dynamicFields: form.dynamicFields.filter((f) => f.label && f.value),
+      dynamicFields: safeDynamicFields,
       date: new Date().toISOString(),
     };
+
     await saveItemToDB(newItem);
     const updatedItems = await getAllItems();
-    setItems(updatedItems);
+    // setItems(updatedItems);
+    // Update local state immediately
+setItems((prev) => {
+  // Remove old version if editing
+  const filtered = prev.filter((i) => i.id !== newItem.id);
+  // Add new/edited item at top
+  return [newItem, ...filtered];
+});
+
     setCategories([...new Set(updatedItems.map((i) => i.category))]);
+
+    // Persist current labels as active template for next time
+    try {
+      const templateToSave = [ (Array.isArray(form.dynamicFields) ? form.dynamicFields : []).map(f => ({ label: f?.label || "", value: "" })) ];
+      setTemplates(templateToSave);
+      localStorage.setItem("templates", JSON.stringify(templateToSave));
+    } catch {}
+
     setShowModal(false);
     setForm({ category: "", names: [""], image: null, imageFile: null, dynamicFields: [] });
     setEditingItem(null);
@@ -129,11 +192,12 @@ export default function AddRemove({ goBack }) {
   };
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
+    const files = e && e.target && e.target.files ? e.target.files : null;
+    const file = files && files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      setForm((prev) => ({ ...prev, image: ev.target.result, imageFile: file }));
+      setForm((prev) => ({ ...prev, image: ev.target?.result || null, imageFile: file }));
     };
     reader.readAsDataURL(file);
   };
@@ -152,21 +216,26 @@ export default function AddRemove({ goBack }) {
 
   // Filters
   const filteredItems = items.filter((item) => {
+    const category = (item.category || "").toLowerCase();
+    const text = searchText.toLowerCase();
+
     const matchesText =
       searchText === "" ||
-      item.category.toLowerCase().includes(searchText.toLowerCase()) ||
-      item.names.some((n) => n.toLowerCase().includes(searchText.toLowerCase())) ||
-      item.dynamicFields.some((f) =>
-        `${f.label} ${f.value}`.toLowerCase().includes(searchText.toLowerCase())
+      category.includes(text) ||
+      (item.names || []).some((n) => (n || "").toLowerCase().includes(text)) ||
+      (item.dynamicFields || []).some((f) =>
+        `${(f.label || "")} ${(f.value || "")}`.toLowerCase().includes(text)
       );
 
     const matchesCategory = filterCategory === "" || item.category === filterCategory;
 
-    const itemDate = new Date(item.date);
+    const itemDate = item.date ? new Date(item.date) : null;
     const startDate = dateRange.start ? new Date(dateRange.start) : null;
     const endDate = dateRange.end ? new Date(dateRange.end) : null;
 
-    const matchesDate = (!startDate || itemDate >= startDate) && (!endDate || itemDate <= endDate);
+    const matchesDate =
+      !itemDate ||
+      ((!startDate || itemDate >= startDate) && (!endDate || itemDate <= endDate));
 
     return matchesText && matchesCategory && matchesDate;
   });
@@ -176,14 +245,15 @@ export default function AddRemove({ goBack }) {
     let newField = { label: "", value: "" };
 
     // If there are saved labels not used yet, auto-assign one
+    const dynamicFields = Array.isArray(form.dynamicFields) ? form.dynamicFields : [];
     const unusedLabels = savedLabels.filter(
-      (l) => !form.dynamicFields.some((f) => f.label === l)
+      (l) => !dynamicFields.some((f) => f.label === l)
     );
     if (unusedLabels.length > 0) {
       newField.label = unusedLabels[0];
     }
 
-    setForm({ ...form, dynamicFields: [...form.dynamicFields, newField] });
+    setForm({ ...form, dynamicFields: [...dynamicFields, newField] });
 
     setTimeout(() => {
       const container = document.querySelector(".dynamic-specs-container");
@@ -195,35 +265,49 @@ export default function AddRemove({ goBack }) {
     setForm({ ...form, dynamicFields: form.dynamicFields.filter((_, idx) => idx !== i) });
 
   const handleDynamicFieldChange = (i, key, value) => {
-    const updated = [...form.dynamicFields];
-    updated[i][key] = value;
+    const base = Array.isArray(form.dynamicFields) ? form.dynamicFields : [];
+    const updated = base.map((f, idx) => (idx === i ? { ...f, [key]: value } : f));
     setForm({ ...form, dynamicFields: updated });
 
     if (key === "label" && value) {
       saveLabel(value);
     }
 
-    if (key === "value" && updated[i].label) {
-      saveSpecOption(updated[i].label.toLowerCase(), value);
+    if (key === "value" && updated[i] && updated[i].label) {
+      saveSpecOption((updated[i].label || '').toLowerCase(), value);
     }
   };
 
   // === Modal ===
   const openAddModal = () => {
     setEditingItem(null);
-    setForm({ category: "", names: [""], image: null, imageFile: null, dynamicFields: [] });
+    const baseTemplate = Array.isArray(templates?.[0]) ? templates[0] : [];
+    const templateFields = baseTemplate.map((f) => ({ label: f?.label || "", value: "" }));
+    setForm({ category: "", names: [""], image: null, imageFile: null, dynamicFields: templateFields });
     setShowModal(true);
   };
-  const openEditModal = (item) => {
-    setEditingItem(item);
-    setForm({
-      category: item.category,
-      names: item.names || [""],
-      image: item.image || null,
-      dynamicFields: item.dynamicFields || [],
-    });
-    setShowModal(true);
-  };
+  // const openEditModal = (item) => {
+  //   setEditingItem(item);
+  //   setForm({
+  //     category: item.category || "",
+  //     names: Array.isArray(item.names) ? item.names : [""],
+  //     image: item.image || null,
+  //     imageFile: null,
+  //     dynamicFields: Array.isArray(item.dynamicFields) ? item.dynamicFields : [],
+  //   });
+  //   setShowModal(true);
+  // };
+const openEditModal = (item) => {
+  setEditingItem(item);
+  setForm({
+    category: item.category,
+    names: item.names || [""],
+    image: item.image || null,
+    imageFile: null, // optional, will reset file input
+    dynamicFields: item.dynamicFields || [],
+  });
+  setShowModal(true);
+};
 
   // Admin login
   const handleLogin = () => {
@@ -239,6 +323,73 @@ export default function AddRemove({ goBack }) {
     setFilterCategory("");
     setDateRange({ start: "", end: "" });
   };
+ 
+  // === Template Modal ===
+  const openTemplateModal = () => {
+    setShowTemplateModal(true);
+  };
+
+  const addTemplateField = () => {
+    setTemplates((prev) => {
+      const base = Array.isArray(prev[0]) ? prev[0] : [];
+      const newTemplate = [...base, { label: "", value: "" }];
+      return [newTemplate]; // overwrite with one active template
+    });
+  };
+
+
+  const handleTemplateFieldChange = (i, field, value) => {
+    setTemplates((prev) => {
+      const base = Array.isArray(prev[0]) ? prev[0] : [];
+      const newTemplate = base.map((f, idx) => (idx === i ? { ...f, [field]: value } : f));
+      return [newTemplate];
+    });
+  };
+const removeTemplateField = (i) => {
+  setTemplates((prev) => {
+    const base = Array.isArray(prev[0]) ? prev[0] : [];
+    const newTemplate = base.filter((_, idx) => idx !== i);
+    return [newTemplate];
+  });
+};
+
+  // const removeTemplateField = (i) => {
+  //   setTemplates((prev) => {
+  //     const newTemplate = praev[0].filter((_, idx) => idx !== i);
+  //     return [newTemplate];
+  //   });
+  // };
+
+  const saveTemplate = () => {
+    // Persist current active template (first element) to localStorage for future sessions
+    try {
+      const toSave = Array.isArray(templates) ? templates : [[]];
+      localStorage.setItem("templates", JSON.stringify(toSave));
+      alert("Template saved");
+      setShowTemplateModal(false);
+    } catch (e) {
+      console.error('Save template failed', e);
+      alert("Failed to save template");
+    }
+  };
+
+
+  // === Save Item ===
+  // const saveItem = () => {
+  //   if (!form.category) return alert("⚠️ Category is required!");
+  //   if (!form.image) return alert("⚠️ Image is required!");
+
+  //   const newItem = {
+  //     id: editingItem ? editingItem.id : Date.now(),
+  //     ...form,
+  //     date: new Date().toISOString()
+  //   };
+
+  //   setItems((prev) =>
+  //     editingItem ? prev.map((i) => (i.id === newItem.id ? newItem : i)) : [...prev, newItem]
+  //   );
+  //   setShowModal(false);
+  // };
 
   return (
     <div className="addremove-container">
@@ -254,6 +405,7 @@ export default function AddRemove({ goBack }) {
       </div>
 
       <button className="add-btn" onClick={openAddModal}>➕ Add Item</button>
+        <button className="add-btn" onClick={openTemplateModal}>➕ Add saved template</button>
 
       {/* Filters */}
       <div className="filters">
@@ -293,8 +445,8 @@ export default function AddRemove({ goBack }) {
                 </div>
               )}
               <div className="meta">
-                <span>📅 {new Date(item.date).toLocaleDateString()}</span>
-                <span>⏰ {new Date(item.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                <span>📅 {item.date ? new Date(item.date).toLocaleDateString() : "-"}</span>
+                <span>⏰ {item.date ? new Date(item.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-"}</span>
               </div>
             </div>
           </div>
@@ -341,7 +493,7 @@ export default function AddRemove({ goBack }) {
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={addDynamicField}>➕ Add Specific</button>
+              {/* <button type="button" onClick={addDynamicField}>➕ Add Specific</button> */}
 
               {/* Dynamic datalists */}
               <datalist id="color-options">{specOptions.color.map((o,i)=><option key={i} value={o}/>)}</datalist>
@@ -351,7 +503,7 @@ export default function AddRemove({ goBack }) {
               <datalist id="quantity-options">{specOptions.quantity.map((o,i)=><option key={i} value={o}/>)}</datalist>
               <datalist id="width-options">{specOptions.width.map((o,i)=><option key={i} value={o}/>)}</datalist>
               <datalist id="height-options">{specOptions.height.map((o,i)=><option key={i} value={o}/>)}</datalist>
-              <datalist id="label-options">
+              <datalist id="label-options"> 
                 {["Quantity","Size","Color","Width","Height","Material","Grade", ...savedLabels].map((l,i)=><option key={i} value={l}/>)}
               </datalist>
             </div>
@@ -359,6 +511,32 @@ export default function AddRemove({ goBack }) {
             <div className="modal-actions">
               <button onClick={saveItem}>✅ {editingItem ? "Update" : "Save"}</button>
               <button onClick={() => setShowModal(false)}>❌ Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+        {/* Template Modal */}
+      {showTemplateModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>📑 Template Builder</h3>
+            <p>Define default custom specification labels</p>
+
+            <div className="form-group">
+              {(templates[0] || []).map((f, i) => (
+  <div key={i} className="spec-field">
+    <input type="text" placeholder="Label" value={f.label || ""} 
+      onChange={(e) => handleTemplateFieldChange(i, "label", e.target.value)} />
+    <button onClick={() => removeTemplateField(i)}>🗑️</button>
+  </div>
+))}
+
+            </div>
+            <button onClick={addTemplateField}>➕ Add Label</button>
+
+            <div className="modal-actions">
+              <button onClick={saveTemplate}>✅ Save Template</button>
+              <button onClick={() => setShowTemplateModal(false)}>❌ Cancel</button>
             </div>
           </div>
         </div>
