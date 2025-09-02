@@ -651,7 +651,7 @@ export default function AddRemove({ goBack }) {
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                 placeholder="Enter or select a category"
               />
-              <input
+              {/* <input
                 list="category-options"
                 type="text"
                 value={form.category}
@@ -659,7 +659,7 @@ export default function AddRemove({ goBack }) {
                   setForm({ ...form, category: toTitleCase(e.target.value) })
                 }
                 placeholder="Enter or select a category"
-              />
+              /> */}
 
               <datalist id="category-options">
                 {categories.map((c, i) => (
