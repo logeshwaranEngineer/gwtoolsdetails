@@ -161,6 +161,30 @@ export default function AddRemove({ goBack }) {
     }
   });
 
+  // Lock background scroll when any modal is open
+  useEffect(() => {
+    const anyOpen = showModal || showTemplateModal || showLoginModal;
+    if (anyOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.position = 'fixed';
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+    } else {
+      const top = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      const y = top ? -parseInt(top || '0', 10) : 0;
+      document.body.style.top = '';
+      window.scrollTo(0, y);
+    }
+  }, [showModal, showTemplateModal, showLoginModal]);
+
   // const addTemplateLabel = () => setTemplateLabels([...templateLabels, ""]);
   // const removeTemplateLabel = (i) => setTemplateLabels(templateLabels.filter((_, idx) => idx !== i));
   // const handleTemplateLabelChange = (i, val) => {

@@ -174,8 +174,9 @@
   padding: 16px;
   max-width: 600px;
   width: 90%;
-  max-height: 90vh;   /* ✅ prevents overflow */
-  overflow-y: auto;   /* ✅ scroll inside modal */
+  max-height: 92vh;   /* a bit taller */
+  overflow-y: auto;   /* scroll inside modal */
+  overscroll-behavior: contain; /* prevent background scroll chaining */
 }
 
 /* Mobile tweaks */
