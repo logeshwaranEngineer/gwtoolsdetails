@@ -1,12 +1,14 @@
+/* --- Base Container --- */
 .addremove-container {
   padding: 16px;
   max-width: 1200px;
   margin: auto;
   font-family: "Segoe UI", sans-serif;
   color: #222;
+  font-size: 16px; /* default for desktop */
 }
 
-/* Header */
+/* --- Header --- */
 .header {
   display: flex;
   justify-content: space-between;
@@ -14,13 +16,21 @@
   flex-wrap: wrap;
   margin-bottom: 20px;
 }
+
 .header h2 {
   font-size: 24px;
   font-weight: bold;
 }
 
-.add-btn, .login-btn, .logout-btn, .filters button {
-   padding: 10px 14px;
+/* --- Buttons --- */
+.add-btn,
+.login-btn,
+.logout-btn,
+.filters button,
+.btn-edit,
+.btn-delete,
+.btn-update {
+  padding: 10px 14px;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -31,9 +41,32 @@
   font-size: 14px;
 }
 
-.add-btn:hover, .login-btn:hover, .logout-btn:hover, .filters button:hover {
+.add-btn:hover,
+.login-btn:hover,
+.logout-btn:hover,
+.filters button:hover {
   background-color: #0056b3;
-    transform: translateY(-1px);
+  transform: translateY(2px);
+}
+
+/* Edit and Update buttons */
+.btn-edit,
+.btn-update {
+  background-color: #dc3545; /* red */
+}
+
+.btn-edit:hover,
+.btn-update:hover {
+  background-color: #b02a37;
+}
+
+/* Delete button */
+.btn-delete {
+  background-color: #6c757d; /* gray */
+}
+
+.btn-delete:hover {
+  background-color: #5a6268;
 }
 
 /* --- Filters Toolbar --- */
@@ -51,7 +84,8 @@
   z-index: 5;
 }
 
-.filters input, .filters select {
+.filters input,
+.filters select {
   flex: 1 1 160px;
   padding: 8px 10px;
   border-radius: 6px;
@@ -59,7 +93,7 @@
   font-size: 14px;
 }
 
-/* Items List */
+/* --- Items List --- */
 .items-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -69,35 +103,21 @@
   padding: 10px;
   box-sizing: border-box;
 }
-.modal-content {
-  max-height: 80vh;  /* keeps modal within viewport */
-  overflow-y: auto;  /* allows scrolling */
-  padding: 16px;
-  background: #fff;
-  border-radius: 8px;
-}
 
-.item-card,
-.chip,
-.spec-chip,
-.modal input,
-.modal select,
-.spec-field input,
-.spec-field select {
-  font-size: 18px; /* bigger font for readability */
-}
-/* Optional: make scrollbar look nicer */
 .items-list::-webkit-scrollbar {
   width: 8px;
 }
+
 .items-list::-webkit-scrollbar-thumb {
   background: #888;
   border-radius: 4px;
 }
+
 .items-list::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
-/* Item Card */
+
+/* --- Item Card --- */
 .item-card {
   display: flex;
   flex-direction: column;
@@ -105,16 +125,14 @@
   border-radius: 8px;
   background: #fff;
   overflow: hidden;
+  font-size: 18px;
 }
 
 .item-card.compact {
-   display: flex;
   flex-direction: row;
-  background: #fff;
-  border-radius: 8px;
   padding: 10px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
   min-height: 120px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
 .card-left img.thumb {
@@ -133,14 +151,16 @@
   align-items: center;
 }
 
-.chips, .specs {
+.chips,
+.specs {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   margin: 4px 0;
 }
 
-.chip, .spec-chip {
+.chip,
+.spec-chip {
   background: #f0f0f0;
   padding: 2px 6px;
   border-radius: 4px;
@@ -154,48 +174,8 @@
   gap: 8px;
 }
 
-
-/* Modal */
+/* --- Modal --- */
 .modal-overlay {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow-y: auto; /* ✅ allow scrolling if modal is tall */
-  z-index: 9999;
-}
-
-.modal {
-  background: #fff;
-  border-radius: 8px;
-  padding: 16px;
-  max-width: 600px;
-  width: 90%;
-  max-height: 92vh;   /* a bit taller */
-  overflow-y: auto;   /* scroll inside modal */
-  overscroll-behavior: contain; /* prevent background scroll chaining */
-}
-
-/* Mobile tweaks */
-@media (max-width: 767px) {
-  .modal {
-    width: 95%;
-    max-height: 85vh;
-    font-size: 16px;
-  }
-
-  .modal input,
-  .modal button,
-  .modal select {
-    font-size: 16px;
-    padding: 10px;
-  }
-}
-
-/* .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -205,38 +185,42 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
-  padding: 20px;
-  box-sizing: border-box;
+  overflow-y: auto;
+  z-index: 9999;
 }
 
 .modal {
   background: #fff;
-  padding: 16px;
-   position: sticky;  
   border-radius: 8px;
-  max-width: 500px;
+  padding: 16px;
+  max-width: 600px;
   width: 90%;
-} */
+  max-height: 92vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 
 .modal h3 {
   margin-top: 0;
-  position: sticky;       /* keep title visible */
+  position: sticky;
   top: 0;
   background: #fff;
   padding-bottom: 10px;
   z-index: 10;
 }
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 20px;
-  position: sticky;       /* keep buttons pinned at bottom */
+  position: sticky;
   bottom: 0;
   background: #fff;
   padding-top: 10px;
 }
+
+/* --- Form Groups --- */
 .form-group {
   margin-bottom: 12px;
 }
@@ -248,64 +232,30 @@
   margin-bottom: 8px;
 }
 
+/* --- Custom Specifications --- */
 .spec-field {
   display: flex;
-  gap: 10px;
-  margin-bottom: 8px;
-  flex-wrap: wrap; /* wraps if inputs are too wide */
-}
-
-.spec-field input,
-.spec-field select {
-  flex: 1 1 120px; /* makes them responsive and prevents overflow */
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-@media (min-width: 768px) {
-  .item-card.compact {
-    flex-direction: row;
-  }
-
-  .card-left {
-    flex: 0 0 120px;
-  }
-
-  .card-right {
-    flex: 1;
-    padding: 8px;
-  }
-
-  .filters input, .filters select, .filters button, .filters label {
-    flex: 1 1 180px;
-    
-  }
-}
-.spec-field {
-  display: flex;
+  flex-wrap: nowrap; /* horizontal always */
   align-items: center;
-  gap: 8px; /* space between input and button */
+  gap: 8px;
   margin-bottom: 6px;
 }
 
 .spec-field input,
 .spec-field select {
   flex: 1;
+  min-width: 80px;
   padding: 8px;
+  box-sizing: border-box;
 }
 
 .spec-field button {
-  flex-shrink: 0; /* prevent shrinking */
+  flex-shrink: 0;
   padding: 6px 10px;
   cursor: pointer;
 }
 
-/* Drag handle for DnD */
+/* --- Drag Handle for DnD --- */
 .drag-handle {
   user-select: none;
   padding: 4px 6px;
@@ -313,18 +263,21 @@
   border-radius: 4px;
   margin-right: 6px;
 }
+
 .drag-handle:active {
   cursor: grabbing;
 }
+
+/* --- Search --- */
 .search-wrapper {
   position: relative;
   display: inline-block;
-  width: 200px; /* adjust width as needed */
+  width: 200px;
 }
 
 .search-wrapper input {
   width: 100%;
-  padding-right: 24px; /* space for the x */
+  padding-right: 24px;
   box-sizing: border-box;
 }
 
@@ -342,41 +295,8 @@
 .clear-btn:hover {
   color: #333;
 }
-/* Custom Specification Row - Always horizontal */
-.spec-field {
-  display: flex;
-  flex-wrap: nowrap; /* prevent wrapping to next line */
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
 
-.spec-field input,
-.spec-field select {
-  flex: 1; /* take remaining space */
-  min-width: 80px; /* ensures inputs are visible on small screens */
-  padding: 8px;
-  box-sizing: border-box;
-}
-
-.spec-field button {
-  flex-shrink: 0; /* do not shrink */
-  padding: 6px 10px;
-  cursor: pointer;
-}
-
-/* Mobile tweaks */
-@media (max-width: 767px) {
-  .spec-field input,
-  .spec-field select {
-    font-size: 14px;
-    padding: 6px;
-  }
-
-  .spec-field button {
-    padding: 6px 8px;
-  }
-}
+/* --- Dynamic Specs Scrollbar --- */
 .dynamic-specs-container::-webkit-scrollbar {
   width: 6px;
 }
@@ -389,18 +309,13 @@
 .dynamic-specs-container::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
-/* Base font size */
-.addremove-container {
-  font-size: 16px; /* default for desktop */
-}
 
-/* Mobile view: bump up font size */
+/* --- Media Queries --- */
 @media (max-width: 767px) {
   .addremove-container {
-    font-size: 18px; /* bigger base font */
+    font-size: 18px;
   }
 
-  /* Make inputs/buttons more touch-friendly */
   .filters input,
   .filters select,
   .filters button,
@@ -415,7 +330,7 @@
   .item-card,
   .chip,
   .spec-chip {
-    font-size: 16px; /* increase readability */
+    font-size: 16px;
   }
 
   .header h2 {
@@ -429,5 +344,27 @@
   .modal-actions button {
     font-size: 16px;
     padding: 10px 14px;
+  }
+}
+
+@media (min-width: 768px) {
+  .item-card.compact {
+    flex-direction: row;
+  }
+
+  .card-left {
+    flex: 0 0 120px;
+  }
+
+  .card-right {
+    flex: 1;
+    padding: 8px;
+  }
+
+  .filters input,
+  .filters select,
+  .filters button,
+  .filters label {
+    flex: 1 1 180px;
   }
 }

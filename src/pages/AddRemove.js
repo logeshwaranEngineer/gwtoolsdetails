@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "../style/AddRemove.css";
 import { getAllItems, saveItemToDB, deleteItemFromDB } from "../server/db";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
@@ -356,6 +356,14 @@ export default function AddRemove({ goBack }) {
     );
     setForm({ ...form, dynamicFields: updated });
 
+    // Keep the edited input in view while typing (helps on mobile)
+    requestAnimationFrame(() => {
+      const fieldEl = document.querySelectorAll('.spec-field')[i];
+      if (fieldEl && typeof fieldEl.scrollIntoView === 'function') {
+        fieldEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    });
+
     if (key === "label" && value) {
       saveLabel(toTitleCase(value));
     }
@@ -605,10 +613,10 @@ export default function AddRemove({ goBack }) {
                 <h4 className="category">{item.category}</h4>
               </div>
               <div className="actions">
-                <button onClick={() => openEditModal(item)}>Edit</button>
+                <button className="btn-edit" onClick={() => openEditModal(item)}>Edit</button>
                 {isLoggedIn && (
-                  <button onClick={() => handleDelete(item.id)}>
-                    | Delete
+                  <button className="btn-delete" onClick={() => handleDelete(item.id)}>
+                    Delete
                   </button>
                 )}
               </div>
@@ -703,11 +711,12 @@ export default function AddRemove({ goBack }) {
               <div
                 className="dynamic-specs-container"
                 style={{
-                  maxHeight: "200px",
+                  maxHeight: "320px", // taller for editing
                   overflowY: "auto",
                   border: "1px solid #ccc",
                   padding: "8px",
                   borderRadius: "6px",
+                  scrollBehavior: "smooth",
                 }}
               >
                 {form.dynamicFields.map((f, i) => (
@@ -813,8 +822,8 @@ export default function AddRemove({ goBack }) {
             </div>
 
             <div className="modal-actions">
-              <button onClick={saveItem}>
-                ✅ {editingItem ? "Update" : "Save"}
+              <button className={editingItem ? "btn-update" : ""} onClick={saveItem}>
+                {editingItem ? "🔴 Update" : "✅ Save"}
               </button>
               <button onClick={() => setShowModal(false)}>❌ Cancel</button>
             </div>
