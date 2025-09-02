@@ -69,6 +69,13 @@
   padding: 10px;
   box-sizing: border-box;
 }
+.modal-content {
+  max-height: 80vh;  /* keeps modal within viewport */
+  overflow-y: auto;  /* allows scrolling */
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+}
 
 .item-card,
 .chip,

@@ -46,17 +46,12 @@ export default function AddRemove({ goBack }) {
         // sort newest first
         allItems.sort((a, b) => new Date(b.date) - new Date(a.date));
         setItems(allItems);
-        const dbCategories = [
-          ...new Set(allItems.map((i) => i.category).filter(Boolean)),
-        ];
-        const mergedCategories = Array.from(
-          new Set([...defaultCategoriesList, ...dbCategories])
-        );
-        setCategories(mergedCategories);
+
+        setCategories(buildCategories(allItems)); // ✅ clean + safe
       } catch (e) {
         console.error("Failed to load items", e);
         setItems([]);
-        setCategories(defaultCategoriesList);
+        setCategories(defaultCategoriesList); // ✅ fallback safely
       }
     }
     fetchItems();
@@ -78,6 +73,13 @@ export default function AddRemove({ goBack }) {
     height: Array.from({ length: 20 }, (_, n) => `${(n + 1) * 2} mm`),
     quantity: Array.from({ length: 100 }, (_, n) => `${n + 1}`),
   };
+  const buildCategories = (items) =>
+    Array.from(
+      new Set([
+        ...defaultCategoriesList,
+        ...items.map((i) => i.category).filter(Boolean),
+      ])
+    );
 
   const [specOptions, setSpecOptions] = useState(() => {
     try {
