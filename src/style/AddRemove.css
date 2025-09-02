@@ -154,8 +154,47 @@
   gap: 8px;
 }
 
+
 /* Modal */
 .modal-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow-y: auto; /* ✅ allow scrolling if modal is tall */
+  z-index: 9999;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;   /* ✅ prevents overflow */
+  overflow-y: auto;   /* ✅ scroll inside modal */
+}
+
+/* Mobile tweaks */
+@media (max-width: 767px) {
+  .modal {
+    width: 95%;
+    max-height: 85vh;
+    font-size: 16px;
+  }
+
+  .modal input,
+  .modal button,
+  .modal select {
+    font-size: 16px;
+    padding: 10px;
+  }
+}
+
+/* .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -177,7 +216,7 @@
   border-radius: 8px;
   max-width: 500px;
   width: 90%;
-}
+} */
 
 .modal h3 {
   margin-top: 0;
@@ -264,6 +303,18 @@
   padding: 6px 10px;
   cursor: pointer;
 }
+
+/* Drag handle for DnD */
+.drag-handle {
+  user-select: none;
+  padding: 4px 6px;
+  background: #eee;
+  border-radius: 4px;
+  margin-right: 6px;
+}
+.drag-handle:active {
+  cursor: grabbing;
+}
 .search-wrapper {
   position: relative;
   display: inline-block;
@@ -336,4 +387,46 @@
 
 .dynamic-specs-container::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+/* Base font size */
+.addremove-container {
+  font-size: 16px; /* default for desktop */
+}
+
+/* Mobile view: bump up font size */
+@media (max-width: 767px) {
+  .addremove-container {
+    font-size: 18px; /* bigger base font */
+  }
+
+  /* Make inputs/buttons more touch-friendly */
+  .filters input,
+  .filters select,
+  .filters button,
+  .modal input,
+  .modal select,
+  .spec-field input,
+  .spec-field select {
+    font-size: 18px;
+    padding: 10px;
+  }
+
+  .item-card,
+  .chip,
+  .spec-chip {
+    font-size: 16px; /* increase readability */
+  }
+
+  .header h2 {
+    font-size: 22px;
+  }
+
+  .modal h3 {
+    font-size: 20px;
+  }
+
+  .modal-actions button {
+    font-size: 16px;
+    padding: 10px 14px;
+  }
 }

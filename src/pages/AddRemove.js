@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../style/AddRemove.css";
 import { getAllItems, saveItemToDB, deleteItemFromDB } from "../server/db";
-
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 export default function AddRemove({ goBack }) {
   const defaultCategoriesList = [
     "FRC ORANGE PANT",
@@ -797,39 +797,70 @@ export default function AddRemove({ goBack }) {
           </div>
         </div>
       )}
-      {/* Template Modal */}
-      {showTemplateModal && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h3>📑 Template Builder</h3>
-            <p>Define default custom specification labels</p>
+      {/* Template Modal */}      
+{showTemplateModal && (
+  <div className="modal-overlay">
+    <div className="modal">
+      <h3>📑 Template Builder</h3>
+      <p>Define default custom specification labels</p>
 
-            <div className="form-group">
+      <DragDropContext
+        onDragEnd={(result) => {
+          if (!result.destination) return;
+          setTemplates((prev) => {
+            const base = Array.isArray(prev[0]) ? [...prev[0]] : [];
+            const [moved] = base.splice(result.source.index, 1);
+            base.splice(result.destination.index, 0, moved);
+            return [base];
+          });
+        }}
+      >
+        <Droppable droppableId="templateFields" direction="vertical">
+          {(provided) => (
+            <div
+              className="form-group"
+              {...provided.droppableProps}
+              ref={provided.innerRef}
+            >
               {(templates[0] || []).map((f, i) => (
-                <div key={i} className="spec-field">
-                  <input
-                    type="text"
-                    placeholder="Label"
-                    value={f.label || ""}
-                    onChange={(e) =>
-                      handleTemplateFieldChange(i, "label", e.target.value)
-                    }
-                  />
-                  <button onClick={() => removeTemplateField(i)}>🗑️</button>
-                </div>
+                <Draggable key={i} draggableId={`field-${(f?.label || '').toString()}-${i}`} index={i}>
+                  {(provided) => (
+                    <div
+                      className="spec-field"
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      style={{ ...provided.draggableProps.style }}
+                    >
+                      <span className="drag-handle" {...provided.dragHandleProps} style={{ cursor: 'grab' }}>≡</span>
+                      <input
+                        type="text"
+                        placeholder="Label"
+                        value={f.label || ""}
+                        onChange={(e) =>
+                          handleTemplateFieldChange(i, "label", e.target.value)
+                        }
+                      />
+                      <button onClick={() => removeTemplateField(i)}>🗑️</button>
+                    </div>
+                  )}
+                </Draggable>
               ))}
+              {provided.placeholder}
             </div>
-            <button onClick={addTemplateField}>➕ Add Label</button>
+          )}
+        </Droppable>
+      </DragDropContext>
 
-            <div className="modal-actions">
-              <button onClick={saveTemplate}>✅ Save Template</button>
-              <button onClick={() => setShowTemplateModal(false)}>
-                ❌ Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <button onClick={addTemplateField}>➕ Add Label</button>
+
+      <div className="modal-actions">
+        <button onClick={saveTemplate}>✅ Save Template</button>
+        <button onClick={() => setShowTemplateModal(false)}>❌ Cancel</button>
+      </div>
+    </div>
+  </div>
+)}
+
 
       {/* Login Modal */}
       {showLoginModal && (
