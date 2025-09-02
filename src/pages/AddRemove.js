@@ -4,15 +4,37 @@ import { getAllItems, saveItemToDB, deleteItemFromDB } from "../server/db";
 
 export default function AddRemove({ goBack }) {
   const defaultCategoriesList = [
-    "FRC ORANGE PANT", "FRC ORANGE SHIRTS", "NORMAL GREY PANT", "NORMAL GREY SHIRT",
-    "NORMAL ORANGE PANT", "NORMAL ORANGE SHIRT", "NORMAL NAVY BLUE PANT", "SAFETY SHOE",
-    "SAFETY GOGGLE", "EAR PLUG", "NORMAL HAND GLOVES", "ELECTRICAL HAND GLOVES",
-    "WELDING HAND GLOVES", "GRINDING HAND GLOVES", "GARDENING GLOVE", "YELLOW COLOR HELMET",
-    "WHITE COLOR HELMET", "HELMET INNER SIDE", "HELMET CHIN STRIP", "GLOVES HOLDER",
-    "N95 MASK", "PARTICULATE RESPIRATOR MASK", "RESPIRATOR MASK (3M)", "GREEN COLOR VEST",
-    "PINK COLOR VEST", "ORANGE COLOR VEST", "TRAFFIC CONTROL VEST", "MARKER PEN", "FACE SHIELD",
+    "FRC ORANGE PANT",
+    "FRC ORANGE SHIRTS",
+    "NORMAL GREY PANT",
+    "NORMAL GREY SHIRT",
+    "NORMAL ORANGE PANT",
+    "NORMAL ORANGE SHIRT",
+    "NORMAL NAVY BLUE PANT",
+    "SAFETY SHOE",
+    "SAFETY GOGGLE",
+    "EAR PLUG",
+    "NORMAL HAND GLOVES",
+    "ELECTRICAL HAND GLOVES",
+    "WELDING HAND GLOVES",
+    "GRINDING HAND GLOVES",
+    "GARDENING GLOVE",
+    "YELLOW COLOR HELMET",
+    "WHITE COLOR HELMET",
+    "HELMET INNER SIDE",
+    "HELMET CHIN STRIP",
+    "GLOVES HOLDER",
+    "N95 MASK",
+    "PARTICULATE RESPIRATOR MASK",
+    "RESPIRATOR MASK (3M)",
+    "GREEN COLOR VEST",
+    "PINK COLOR VEST",
+    "ORANGE COLOR VEST",
+    "TRAFFIC CONTROL VEST",
+    "MARKER PEN",
+    "FACE SHIELD",
   ];
- // Filters
+  // Filters
   const [searchText, setSearchText] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
@@ -22,13 +44,17 @@ export default function AddRemove({ goBack }) {
       try {
         const allItems = (await getAllItems()) || [];
         // sort newest first
-    allItems.sort((a, b) => new Date(b.date) - new Date(a.date));
+        allItems.sort((a, b) => new Date(b.date) - new Date(a.date));
         setItems(allItems);
-        const dbCategories = [...new Set(allItems.map((i) => i.category).filter(Boolean))];
-        const mergedCategories = Array.from(new Set([...defaultCategoriesList, ...dbCategories]));
+        const dbCategories = [
+          ...new Set(allItems.map((i) => i.category).filter(Boolean)),
+        ];
+        const mergedCategories = Array.from(
+          new Set([...defaultCategoriesList, ...dbCategories])
+        );
         setCategories(mergedCategories);
       } catch (e) {
-        console.error('Failed to load items', e);
+        console.error("Failed to load items", e);
         setItems([]);
         setCategories(defaultCategoriesList);
       }
@@ -41,7 +67,13 @@ export default function AddRemove({ goBack }) {
     color: ["Red", "Blue", "Green", "Black", "White", "Yellow"],
     size: ["XS", "S", "M", "L", "XL", "XXL"],
     material: ["Steel", "Aluminium", "Copper", "Brass", "Plastic", "Wood"],
-    grade: ["Mild Steel (MS)", "Stainless Steel (SS)", "Cast Iron (CI)", "Tool Steel", "High Carbon"],
+    grade: [
+      "Mild Steel (MS)",
+      "Stainless Steel (SS)",
+      "Cast Iron (CI)",
+      "Tool Steel",
+      "High Carbon",
+    ],
     width: Array.from({ length: 20 }, (_, n) => `${(n + 1) * 2} mm`),
     height: Array.from({ length: 20 }, (_, n) => `${(n + 1) * 2} mm`),
     quantity: Array.from({ length: 100 }, (_, n) => `${n + 1}`),
@@ -52,7 +84,9 @@ export default function AddRemove({ goBack }) {
       const stored = localStorage.getItem("specOptions");
       const parsed = stored ? JSON.parse(stored) : null;
       // validate shape minimally
-      return parsed && typeof parsed === 'object' ? { ...defaultSpecOptions, ...parsed } : defaultSpecOptions;
+      return parsed && typeof parsed === "object"
+        ? { ...defaultSpecOptions, ...parsed }
+        : defaultSpecOptions;
     } catch {
       return defaultSpecOptions;
     }
@@ -106,32 +140,33 @@ export default function AddRemove({ goBack }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginPassword, setLoginPassword] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
- const [showTemplateModal, setShowTemplateModal] = useState(false);
- const [templates, setTemplates] = useState(() => {
-  try {
-    const saved = localStorage.getItem("templates");
-    const parsed = saved ? JSON.parse(saved) : [];
-    // We use single active template as first element: an array of {label, value}
-    if (Array.isArray(parsed) && parsed.length > 0 && Array.isArray(parsed[0])) {
-      return parsed;
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [templates, setTemplates] = useState(() => {
+    try {
+      const saved = localStorage.getItem("templates");
+      const parsed = saved ? JSON.parse(saved) : [];
+      // We use single active template as first element: an array of {label, value}
+      if (
+        Array.isArray(parsed) &&
+        parsed.length > 0 &&
+        Array.isArray(parsed[0])
+      ) {
+        return parsed;
+      }
+      return [[]];
+    } catch {
+      return [[]];
     }
-    return [[]];
-  } catch {
-    return [[]];
-  }
-});
+  });
 
+  // const addTemplateLabel = () => setTemplateLabels([...templateLabels, ""]);
+  // const removeTemplateLabel = (i) => setTemplateLabels(templateLabels.filter((_, idx) => idx !== i));
+  // const handleTemplateLabelChange = (i, val) => {
+  //   const updated = [...templateLabels];
+  //   updated[i] = val;
+  //   setTemplateLabels(updated);
+  // };
 
-
- 
-// const addTemplateLabel = () => setTemplateLabels([...templateLabels, ""]);
-// const removeTemplateLabel = (i) => setTemplateLabels(templateLabels.filter((_, idx) => idx !== i));
-// const handleTemplateLabelChange = (i, val) => {
-//   const updated = [...templateLabels];
-//   updated[i] = val;
-//   setTemplateLabels(updated);
-// };
-  
   // Save item
   const saveItem = async () => {
     if (!form.category.trim()) {
@@ -143,13 +178,16 @@ export default function AddRemove({ goBack }) {
       return;
     }
 
-    const safeDynamicFields = (Array.isArray(form.dynamicFields) ? form.dynamicFields : [])
-      .filter((f) => (f.label || "").trim() && (f.value || "").trim());
+    const safeDynamicFields = (
+      Array.isArray(form.dynamicFields) ? form.dynamicFields : []
+    ).filter((f) => (f.label || "").trim() && (f.value || "").trim());
 
     const newItem = {
       id: editingItem ? editingItem.id : Date.now(),
       category: form.category,
-      names: (Array.isArray(form.names) ? form.names : []).filter((n) => (n || "").trim() !== ""),
+      names: (Array.isArray(form.names) ? form.names : []).filter(
+        (n) => (n || "").trim() !== ""
+      ),
       image: form.image,
       dynamicFields: safeDynamicFields,
       date: new Date().toISOString(),
@@ -159,30 +197,42 @@ export default function AddRemove({ goBack }) {
     const updatedItems = await getAllItems();
     // setItems(updatedItems);
     // Update local state immediately
-setItems((prev) => {
-  // Remove old version if editing
-  const filtered = prev.filter((i) => i.id !== newItem.id);
-  // Add new/edited item at top
-  return [newItem, ...filtered];
-});
+    setItems((prev) => {
+      // Remove old version if editing
+      const filtered = prev.filter((i) => i.id !== newItem.id);
+      // Add new/edited item at top
+      return [newItem, ...filtered];
+    });
 
     setCategories([...new Set(updatedItems.map((i) => i.category))]);
 
     // Persist current labels as active template for next time
     try {
-      const templateToSave = [ (Array.isArray(form.dynamicFields) ? form.dynamicFields : []).map(f => ({ label: f?.label || "", value: "" })) ];
+      const templateToSave = [
+        (Array.isArray(form.dynamicFields) ? form.dynamicFields : []).map(
+          (f) => ({ label: f?.label || "", value: "" })
+        ),
+      ];
       setTemplates(templateToSave);
       localStorage.setItem("templates", JSON.stringify(templateToSave));
     } catch {}
 
     setShowModal(false);
-    setForm({ category: "", names: [""], image: null, imageFile: null, dynamicFields: [] });
+    setForm({
+      category: "",
+      names: [""],
+      image: null,
+      imageFile: null,
+      dynamicFields: [],
+    });
     setEditingItem(null);
   };
 
   // === Image Selection ===
   const handleImageSelect = () => {
-    const choice = window.confirm("Click OK to capture a photo, Cancel to upload from files.");
+    const choice = window.confirm(
+      "Click OK to capture a photo, Cancel to upload from files."
+    );
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
@@ -197,7 +247,11 @@ setItems((prev) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      setForm((prev) => ({ ...prev, image: ev.target?.result || null, imageFile: file }));
+      setForm((prev) => ({
+        ...prev,
+        image: ev.target?.result || null,
+        imageFile: file,
+      }));
     };
     reader.readAsDataURL(file);
   };
@@ -224,10 +278,11 @@ setItems((prev) => {
       category.includes(text) ||
       (item.names || []).some((n) => (n || "").toLowerCase().includes(text)) ||
       (item.dynamicFields || []).some((f) =>
-        `${(f.label || "")} ${(f.value || "")}`.toLowerCase().includes(text)
+        `${f.label || ""} ${f.value || ""}`.toLowerCase().includes(text)
       );
 
-    const matchesCategory = filterCategory === "" || item.category === filterCategory;
+    const matchesCategory =
+      filterCategory === "" || item.category === filterCategory;
 
     const itemDate = item.date ? new Date(item.date) : null;
     const startDate = dateRange.start ? new Date(dateRange.start) : null;
@@ -235,7 +290,8 @@ setItems((prev) => {
 
     const matchesDate =
       !itemDate ||
-      ((!startDate || itemDate >= startDate) && (!endDate || itemDate <= endDate));
+      ((!startDate || itemDate >= startDate) &&
+        (!endDate || itemDate <= endDate));
 
     return matchesText && matchesCategory && matchesDate;
   });
@@ -243,9 +299,9 @@ setItems((prev) => {
   // === Dynamic Field Handlers ===
   const addDynamicField = () => {
     let newField = { label: "", value: "" };
-
-    // If there are saved labels not used yet, auto-assign one
-    const dynamicFields = Array.isArray(form.dynamicFields) ? form.dynamicFields : [];
+    const dynamicFields = Array.isArray(form.dynamicFields)
+      ? form.dynamicFields
+      : [];
     const unusedLabels = savedLabels.filter(
       (l) => !dynamicFields.some((f) => f.label === l)
     );
@@ -262,19 +318,27 @@ setItems((prev) => {
   };
 
   const removeDynamicField = (i) =>
-    setForm({ ...form, dynamicFields: form.dynamicFields.filter((_, idx) => idx !== i) });
+    setForm({
+      ...form,
+      dynamicFields: form.dynamicFields.filter((_, idx) => idx !== i),
+    });
 
   const handleDynamicFieldChange = (i, key, value) => {
     const base = Array.isArray(form.dynamicFields) ? form.dynamicFields : [];
-    const updated = base.map((f, idx) => (idx === i ? { ...f, [key]: value } : f));
+    const updated = base.map((f, idx) =>
+      idx === i ? { ...f, [key]: toTitleCase(value) } : f
+    );
     setForm({ ...form, dynamicFields: updated });
 
     if (key === "label" && value) {
-      saveLabel(value);
+      saveLabel(toTitleCase(value));
     }
 
     if (key === "value" && updated[i] && updated[i].label) {
-      saveSpecOption((updated[i].label || '').toLowerCase(), value);
+      saveSpecOption(
+        (updated[i].label || "").toLowerCase(),
+        toTitleCase(value)
+      );
     }
   };
 
@@ -282,8 +346,17 @@ setItems((prev) => {
   const openAddModal = () => {
     setEditingItem(null);
     const baseTemplate = Array.isArray(templates?.[0]) ? templates[0] : [];
-    const templateFields = baseTemplate.map((f) => ({ label: f?.label || "", value: "" }));
-    setForm({ category: "", names: [""], image: null, imageFile: null, dynamicFields: templateFields });
+    const templateFields = baseTemplate.map((f) => ({
+      label: f?.label || "",
+      value: "",
+    }));
+    setForm({
+      category: "",
+      names: [""],
+      image: null,
+      imageFile: null,
+      dynamicFields: templateFields,
+    });
     setShowModal(true);
   };
   // const openEditModal = (item) => {
@@ -297,17 +370,32 @@ setItems((prev) => {
   //   });
   //   setShowModal(true);
   // };
-const openEditModal = (item) => {
-  setEditingItem(item);
-  setForm({
-    category: item.category,
-    names: item.names || [""],
-    image: item.image || null,
-    imageFile: null, // optional, will reset file input
-    dynamicFields: item.dynamicFields || [],
-  });
-  setShowModal(true);
-};
+  const openEditModal = (item) => {
+    setEditingItem(item);
+    const baseTemplate = Array.isArray(templates?.[0]) ? templates[0] : [];
+    const mergedFields = baseTemplate.map((tplField) => {
+      const match = (item.dynamicFields || []).find(
+        (f) => f.label === tplField.label
+      );
+      return {
+        label: tplField.label,
+        value: match ? match.value : "",
+      };
+    });
+    const extraFields = (item.dynamicFields || []).filter(
+      (f) => !baseTemplate.some((tplField) => tplField.label === f.label)
+    );
+
+    setForm({
+      category: item.category || "",
+      names: Array.isArray(item.names) ? item.names : [""],
+      image: item.image || null,
+      imageFile: null,
+      dynamicFields: [...mergedFields, ...extraFields],
+    });
+
+    setShowModal(true);
+  };
 
   // Admin login
   const handleLogin = () => {
@@ -323,7 +411,7 @@ const openEditModal = (item) => {
     setFilterCategory("");
     setDateRange({ start: "", end: "" });
   };
- 
+
   // === Template Modal ===
   const openTemplateModal = () => {
     setShowTemplateModal(true);
@@ -333,25 +421,26 @@ const openEditModal = (item) => {
     setTemplates((prev) => {
       const base = Array.isArray(prev[0]) ? prev[0] : [];
       const newTemplate = [...base, { label: "", value: "" }];
-      return [newTemplate]; // overwrite with one active template
-    });
-  };
-
-
-  const handleTemplateFieldChange = (i, field, value) => {
-    setTemplates((prev) => {
-      const base = Array.isArray(prev[0]) ? prev[0] : [];
-      const newTemplate = base.map((f, idx) => (idx === i ? { ...f, [field]: value } : f));
       return [newTemplate];
     });
   };
-const removeTemplateField = (i) => {
-  setTemplates((prev) => {
-    const base = Array.isArray(prev[0]) ? prev[0] : [];
-    const newTemplate = base.filter((_, idx) => idx !== i);
-    return [newTemplate];
-  });
-};
+  const handleTemplateFieldChange = (i, field, value) => {
+    setTemplates((prev) => {
+      const base = Array.isArray(prev[0]) ? prev[0] : [];
+      const newTemplate = base.map((f, idx) =>
+        idx === i ? { ...f, [field]: toTitleCase(value) } : f
+      );
+      return [newTemplate];
+    });
+  };
+
+  const removeTemplateField = (i) => {
+    setTemplates((prev) => {
+      const base = Array.isArray(prev[0]) ? prev[0] : [];
+      const newTemplate = base.filter((_, idx) => idx !== i);
+      return [newTemplate];
+    });
+  };
 
   // const removeTemplateField = (i) => {
   //   setTemplates((prev) => {
@@ -368,11 +457,15 @@ const removeTemplateField = (i) => {
       alert("Template saved");
       setShowTemplateModal(false);
     } catch (e) {
-      console.error('Save template failed', e);
+      console.error("Save template failed", e);
       alert("Failed to save template");
     }
   };
 
+  const toTitleCase = (str) => {
+    if (!str) return "";
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  };
 
   // === Save Item ===
   // const saveItem = () => {
@@ -397,30 +490,75 @@ const removeTemplateField = (i) => {
         <h2>📦 Manage Inventory - Add & Remove </h2>
         <div>
           {!isLoggedIn ? (
-            <button className="login-btn" onClick={() => setShowLoginModal(true)}>🔐 Login</button>
+            <button
+              className="login-btn"
+              onClick={() => setShowLoginModal(true)}
+            >
+              🔐 Login
+            </button>
           ) : (
-            <button className="logout-btn" onClick={handleLogout}>🚪 Logout</button>
+            <button className="logout-btn" onClick={handleLogout}>
+              🚪 Logout
+            </button>
           )}
         </div>
       </div>
 
-      <button className="add-btn" onClick={openAddModal}>➕ Add Item</button>
-        <button className="add-btn" onClick={openTemplateModal}>➕ Add saved template</button>
+      <button className="add-btn" onClick={openAddModal}>
+        ➕ Add Item
+      </button>
+      <button className="add-btn" onClick={openTemplateModal}>
+        ➕ Add saved template
+      </button>
 
       {/* Filters */}
       <div className="filters">
         <div className="search-wrapper">
-          <input type="text" placeholder="🔍 Search by text..." value={searchText} onChange={(e) => setSearchText(e.target.value)} />
-          {searchText && <span className="clear-btn" onClick={() => setSearchText("")}>×</span>}
+          <input
+            type="text"
+            placeholder="🔍 Search by text..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+          {searchText && (
+            <span className="clear-btn" onClick={() => setSearchText("")}>
+              ×
+            </span>
+          )}
         </div>
-        <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+        >
           <option value="">All Categories</option>
-          {categories.sort((a, b) => a.localeCompare(b)).map((c, i) => (
-            <option key={i} value={c}>{c}</option>
-          ))}
+          {categories
+            .sort((a, b) => a.localeCompare(b))
+            .map((c, i) => (
+              <option key={i} value={c}>
+                {c}
+              </option>
+            ))}
         </select>
-        <label>Start Date:<input type="date" value={dateRange.start} onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })} /></label>
-        <label>End Date:<input type="date" value={dateRange.end} onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })} /></label>
+        <label>
+          Start Date:
+          <input
+            type="date"
+            value={dateRange.start}
+            onChange={(e) =>
+              setDateRange({ ...dateRange, start: e.target.value })
+            }
+          />
+        </label>
+        <label>
+          End Date:
+          <input
+            type="date"
+            value={dateRange.end}
+            onChange={(e) =>
+              setDateRange({ ...dateRange, end: e.target.value })
+            }
+          />
+        </label>
         <button onClick={resetFilters}>Reset Filters</button>
       </div>
 
@@ -430,23 +568,56 @@ const removeTemplateField = (i) => {
         {filteredItems.map((item) => (
           <div key={item.id} className="item-card compact">
             <div className="card-left">
-              {item.image ? <img src={item.image} alt={item.category} className="thumb" /> : <div className="no-thumb">📷</div>}
+              {item.image ? (
+                <img src={item.image} alt={item.category} className="thumb" />
+              ) : (
+                <div className="no-thumb">📷</div>
+              )}
             </div>
             <div className="card-right">
-              <div className="card-header"><h4 className="category">{item.category}</h4></div>
+              <div className="card-header">
+                <h4 className="category">{item.category}</h4>
+              </div>
               <div className="actions">
                 <button onClick={() => openEditModal(item)}>Edit</button>
-                {isLoggedIn && <button onClick={() => handleDelete(item.id)}>| Delete</button>}
+                {isLoggedIn && (
+                  <button onClick={() => handleDelete(item.id)}>
+                    | Delete
+                  </button>
+                )}
               </div>
-              {item.names?.length > 0 && <div className="chips">{item.names.map((n, i) => <span key={i} className="chip">{n}</span>)}</div>}
+              {item.names?.length > 0 && (
+                <div className="chips">
+                  {item.names.map((n, i) => (
+                    <span key={i} className="chip">
+                      {n}
+                    </span>
+                  ))}
+                </div>
+              )}
               {item.dynamicFields?.length > 0 && (
                 <div className="specs">
-                  {item.dynamicFields.map((f, i) => <span key={i} className="spec-chip">{f.label}: {f.value}</span>)}
+                  {item.dynamicFields.map((f, i) => (
+                    <span key={i} className="spec-chip">
+                      {f.label}: {f.value}
+                    </span>
+                  ))}
                 </div>
               )}
               <div className="meta">
-                <span>📅 {item.date ? new Date(item.date).toLocaleDateString() : "-"}</span>
-                <span>⏰ {item.date ? new Date(item.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-"}</span>
+                <span>
+                  📅{" "}
+                  {item.date ? new Date(item.date).toLocaleDateString() : "-"}
+                </span>
+                <span>
+                  ⏰{" "}
+                  {item.date
+                    ? new Date(item.date).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "-"}
+                </span>
               </div>
             </div>
           </div>
@@ -462,60 +633,169 @@ const removeTemplateField = (i) => {
             {/* Image Selection */}
             <div className="form-group">
               <label>Image (Required)*</label>
-              {form.image && <img src={form.image} alt="preview" className="preview" />}
-              <button type="button" onClick={handleImageSelect}>📸 Capture / 📂 Upload</button>
+              {form.image && (
+                <img src={form.image} alt="preview" className="preview" />
+              )}
+              <button type="button" onClick={handleImageSelect}>
+                📸 Capture / 📂 Upload
+              </button>
             </div>
 
             {/* Category */}
             <div className="form-group">
               <label>Category (Required)*</label>
-              <input list="category-options" type="text" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Enter or select a category" />
-              <datalist id="category-options">{categories.map((c, i) => <option key={i} value={c} />)}</datalist>
+              <input
+                list="category-options"
+                type="text"
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                placeholder="Enter or select a category"
+              />
+              <input
+                list="category-options"
+                type="text"
+                value={form.category}
+                onChange={(e) =>
+                  setForm({ ...form, category: toTitleCase(e.target.value) })
+                }
+                placeholder="Enter or select a category"
+              />
+
+              <datalist id="category-options">
+                {categories.map((c, i) => (
+                  <option key={i} value={c} />
+                ))}
+              </datalist>
             </div>
 
             {/* Dynamic Specifications */}
             <div className="form-group">
-              <label>Custom Specifications (Quantity, Size, Color, Width, Height, Material, Grade)</label>
-              <div className="dynamic-specs-container" style={{ maxHeight: "200px", overflowY: "auto", border: "1px solid #ccc", padding: "8px", borderRadius: "6px" }}>
+              <label>
+                Custom Specifications (Quantity, Size, Color, Width, Height,
+                Material, Grade)
+              </label>
+              <div
+                className="dynamic-specs-container"
+                style={{
+                  maxHeight: "200px",
+                  overflowY: "auto",
+                  border: "1px solid #ccc",
+                  padding: "8px",
+                  borderRadius: "6px",
+                }}
+              >
                 {form.dynamicFields.map((f, i) => (
                   <div key={i} className="spec-field">
-                    <input type="text" placeholder="Enter the Label name" list="label-options" value={f.label} onChange={(e) => handleDynamicFieldChange(i, "label", e.target.value)} />
+                    <input
+                      type="text"
+                      placeholder="Enter the Label name"
+                      list="label-options"
+                      value={f.label}
+                      onChange={(e) =>
+                        handleDynamicFieldChange(i, "label", e.target.value)
+                      }
+                    />
 
                     {/* Smart editable dropdowns */}
-                    {["quantity","size","color","width","height","material","grade"].includes(f.label.toLowerCase()) ? (
-                      <input type="text" list={`${f.label.toLowerCase()}-options`} placeholder={`Enter or choose ${f.label}`} value={f.value}
-                        onChange={(e) => handleDynamicFieldChange(i, "value", e.target.value)} />
+                    {[
+                      "quantity",
+                      "size",
+                      "color",
+                      "width",
+                      "height",
+                      "material",
+                      "grade",
+                    ].includes(f.label.toLowerCase()) ? (
+                      <input
+                        type="text"
+                        list={`${f.label.toLowerCase()}-options`}
+                        placeholder={`Enter or choose ${f.label}`}
+                        value={f.value}
+                        onChange={(e) =>
+                          handleDynamicFieldChange(i, "value", e.target.value)
+                        }
+                      />
                     ) : (
-                      <input type="text" placeholder="Value" value={f.value} onChange={(e) => handleDynamicFieldChange(i, "value", e.target.value)} />
+                      <input
+                        type="text"
+                        placeholder="Value"
+                        value={f.value}
+                        onChange={(e) =>
+                          handleDynamicFieldChange(i, "value", e.target.value)
+                        }
+                      />
                     )}
 
-                    <button type="button" onClick={() => removeDynamicField(i)}>🗑️</button>
+                    <button type="button" onClick={() => removeDynamicField(i)}>
+                      🗑️
+                    </button>
                   </div>
                 ))}
               </div>
               {/* <button type="button" onClick={addDynamicField}>➕ Add Specific</button> */}
 
               {/* Dynamic datalists */}
-              <datalist id="color-options">{specOptions.color.map((o,i)=><option key={i} value={o}/>)}</datalist>
-              <datalist id="size-options">{specOptions.size.map((o,i)=><option key={i} value={o}/>)}</datalist>
-              <datalist id="material-options">{specOptions.material.map((o,i)=><option key={i} value={o}/>)}</datalist>
-              <datalist id="grade-options">{specOptions.grade.map((o,i)=><option key={i} value={o}/>)}</datalist>
-              <datalist id="quantity-options">{specOptions.quantity.map((o,i)=><option key={i} value={o}/>)}</datalist>
-              <datalist id="width-options">{specOptions.width.map((o,i)=><option key={i} value={o}/>)}</datalist>
-              <datalist id="height-options">{specOptions.height.map((o,i)=><option key={i} value={o}/>)}</datalist>
-              <datalist id="label-options"> 
-                {["Quantity","Size","Color","Width","Height","Material","Grade", ...savedLabels].map((l,i)=><option key={i} value={l}/>)}
+              <datalist id="color-options">
+                {specOptions.color.map((o, i) => (
+                  <option key={i} value={o} />
+                ))}
+              </datalist>
+              <datalist id="size-options">
+                {specOptions.size.map((o, i) => (
+                  <option key={i} value={o} />
+                ))}
+              </datalist>
+              <datalist id="material-options">
+                {specOptions.material.map((o, i) => (
+                  <option key={i} value={o} />
+                ))}
+              </datalist>
+              <datalist id="grade-options">
+                {specOptions.grade.map((o, i) => (
+                  <option key={i} value={o} />
+                ))}
+              </datalist>
+              <datalist id="quantity-options">
+                {specOptions.quantity.map((o, i) => (
+                  <option key={i} value={o} />
+                ))}
+              </datalist>
+              <datalist id="width-options">
+                {specOptions.width.map((o, i) => (
+                  <option key={i} value={o} />
+                ))}
+              </datalist>
+              <datalist id="height-options">
+                {specOptions.height.map((o, i) => (
+                  <option key={i} value={o} />
+                ))}
+              </datalist>
+              <datalist id="label-options">
+                {[
+                  "Quantity",
+                  "Size",
+                  "Color",
+                  "Width",
+                  "Height",
+                  "Material",
+                  "Grade",
+                  ...savedLabels,
+                ].map((l, i) => (
+                  <option key={i} value={l} />
+                ))}
               </datalist>
             </div>
 
             <div className="modal-actions">
-              <button onClick={saveItem}>✅ {editingItem ? "Update" : "Save"}</button>
+              <button onClick={saveItem}>
+                ✅ {editingItem ? "Update" : "Save"}
+              </button>
               <button onClick={() => setShowModal(false)}>❌ Cancel</button>
             </div>
           </div>
         </div>
       )}
-        {/* Template Modal */}
+      {/* Template Modal */}
       {showTemplateModal && (
         <div className="modal-overlay">
           <div className="modal">
@@ -524,19 +804,26 @@ const removeTemplateField = (i) => {
 
             <div className="form-group">
               {(templates[0] || []).map((f, i) => (
-  <div key={i} className="spec-field">
-    <input type="text" placeholder="Label" value={f.label || ""} 
-      onChange={(e) => handleTemplateFieldChange(i, "label", e.target.value)} />
-    <button onClick={() => removeTemplateField(i)}>🗑️</button>
-  </div>
-))}
-
+                <div key={i} className="spec-field">
+                  <input
+                    type="text"
+                    placeholder="Label"
+                    value={f.label || ""}
+                    onChange={(e) =>
+                      handleTemplateFieldChange(i, "label", e.target.value)
+                    }
+                  />
+                  <button onClick={() => removeTemplateField(i)}>🗑️</button>
+                </div>
+              ))}
             </div>
             <button onClick={addTemplateField}>➕ Add Label</button>
 
             <div className="modal-actions">
               <button onClick={saveTemplate}>✅ Save Template</button>
-              <button onClick={() => setShowTemplateModal(false)}>❌ Cancel</button>
+              <button onClick={() => setShowTemplateModal(false)}>
+                ❌ Cancel
+              </button>
             </div>
           </div>
         </div>
@@ -547,10 +834,18 @@ const removeTemplateField = (i) => {
         <div className="modal-overlay">
           <div className="modal">
             <h3>🔐 Admin Login</h3>
-            <input type="password" placeholder="Enter password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} onKeyPress={(e) => e.key === "Enter" && handleLogin()} />
+            <input
+              type="password"
+              placeholder="Enter password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && handleLogin()}
+            />
             <div className="modal-actions">
               <button onClick={handleLogin}>✅ Login</button>
-              <button onClick={() => setShowLoginModal(false)}>❌ Cancel</button>
+              <button onClick={() => setShowLoginModal(false)}>
+                ❌ Cancel
+              </button>
             </div>
           </div>
         </div>
