@@ -9,31 +9,25 @@ export default function StockCheck({ goBack }) {
   const [lowStockItems, setLowStockItems] = useState([]);
   const [stockSummary, setStockSummary] = useState(null);
 
-  // Load stock data on component mount
-  useEffect(() => {
-    loadStockData();
-  }, []);
-
+  // Load stock data
   const loadStockData = () => {
-    // Get current stock from service
     const currentStock = stockService.getCurrentStock();
     setStock(currentStock);
 
-    // Get low stock items
-    const lowStock = stockService.getLowStockItems(5); // threshold of 5
+    const lowStock = stockService.getLowStockItems(5); // threshold = 5
     setLowStockItems(lowStock);
 
-    // Get stock summary
     const summary = stockService.getStockSummary();
     setStockSummary(summary);
 
-    // Show low stock alert if any
     if (lowStock.length > 0) {
-      const lowStockMessage = lowStock.map(item => 
-        `${item.itemName} - ${item.variantLabel} (Balance: ${item.balance})`
-      ).join('\n');
-      
-      // Show alert with delay to ensure UI is loaded
+      const lowStockMessage = lowStock
+        .map(
+          (item) =>
+            `${item.itemName} - ${item.variantLabel} (Balance: ${item.balance})`
+        )
+        .join("\n");
+
       setTimeout(() => {
         alert(
           `🚨 URGENT: LOW STOCK ALERT! 🚨\n\nThe following items are below minimum level (under 5 units):\n\n${lowStockMessage}\n\n⚠️ ACTION REQUIRED:\n• Inform Admin & Boss immediately\n• Arrange for restocking\n• Monitor usage closely\n\nClick OK to continue...`
@@ -41,6 +35,18 @@ export default function StockCheck({ goBack }) {
       }, 800);
     }
   };
+
+  // Run on mount + listen for updates
+  useEffect(() => {
+    loadStockData();
+
+    // 🔄 Listen for "storageUpdate" event
+    window.addEventListener("storageUpdate", loadStockData);
+
+    return () => {
+      window.removeEventListener("storageUpdate", loadStockData);
+    };
+  }, []);
 
   return (
     <div className="stock-container">
@@ -67,16 +73,16 @@ export default function StockCheck({ goBack }) {
       {/* If low stock exists, show warning banner */}
       {lowStockItems.length > 0 && (
         <div className="low-stock-banner">
-          <div className="alert-header">
-            🚨 URGENT: LOW STOCK ALERT! 🚨
-          </div>
+          <div className="alert-header">🚨 URGENT: LOW STOCK ALERT! 🚨</div>
           <div className="alert-content">
             <strong>Items below minimum level (under 5 units):</strong>
             <div className="low-items-list">
               {lowStockItems.map((item, i) => (
                 <span key={i} className="low-item">
-                  📦 {item.itemName} - {item.variantLabel} 
-                  <span className="balance-critical">(Only {item.balance} left!)</span>
+                  📦 {item.itemName} - {item.variantLabel}
+                  <span className="balance-critical">
+                    (Only {item.balance} left!)
+                  </span>
                 </span>
               ))}
             </div>
@@ -114,9 +120,11 @@ export default function StockCheck({ goBack }) {
       {selectedItem && (
         <div className="stock-table-container">
           {(() => {
-            const selectedItemData = stock.find(item => item.id == selectedItem);
+            const selectedItemData = stock.find(
+              (item) => item.id == selectedItem
+            );
             if (!selectedItemData) return null;
-            
+
             return (
               <>
                 <h3>📦 {selectedItemData.name} Stock Details</h3>

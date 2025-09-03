@@ -160,6 +160,19 @@ export default function AddRemove({ goBack }) {
       return [[]];
     }
   });
+  // === Duplicate Label Check Helpers ===
+  const normalizeLabel = (s) => (s || "").trim().toLowerCase();
+  const findDuplicateLabels = (list = []) => {
+    const counts = {};
+    list.forEach((f) => {
+      const k = normalizeLabel(f?.label);
+      if (!k) return;
+      counts[k] = (counts[k] || 0) + 1;
+    });
+    return new Set(Object.keys(counts).filter((k) => counts[k] > 1));
+  };
+  const activeTemplate = Array.isArray(templates?.[0]) ? templates[0] : [];
+  const duplicateTemplateLabels = findDuplicateLabels(activeTemplate);
 
   // Lock background scroll when any modal is open
   useEffect(() => {
@@ -167,20 +180,20 @@ export default function AddRemove({ goBack }) {
     if (anyOpen) {
       const scrollY = window.scrollY;
       document.body.style.top = `-${scrollY}px`;
-      document.body.style.position = 'fixed';
-      document.body.style.left = '0';
-      document.body.style.right = '0';
-      document.body.style.width = '100%';
-      document.body.style.overflow = 'hidden';
+      document.body.style.position = "fixed";
+      document.body.style.left = "0";
+      document.body.style.right = "0";
+      document.body.style.width = "100%";
+      document.body.style.overflow = "hidden";
     } else {
       const top = document.body.style.top;
-      document.body.style.position = '';
-      document.body.style.left = '';
-      document.body.style.right = '';
-      document.body.style.width = '';
-      document.body.style.overflow = '';
-      const y = top ? -parseInt(top || '0', 10) : 0;
-      document.body.style.top = '';
+      document.body.style.position = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.width = "";
+      document.body.style.overflow = "";
+      const y = top ? -parseInt(top || "0", 10) : 0;
+      document.body.style.top = "";
       window.scrollTo(0, y);
     }
   }, [showModal, showTemplateModal, showLoginModal]);
@@ -358,9 +371,9 @@ export default function AddRemove({ goBack }) {
 
     // Keep the edited input in view while typing (helps on mobile)
     requestAnimationFrame(() => {
-      const fieldEl = document.querySelectorAll('.spec-field')[i];
-      if (fieldEl && typeof fieldEl.scrollIntoView === 'function') {
-        fieldEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      const fieldEl = document.querySelectorAll(".spec-field")[i];
+      if (fieldEl && typeof fieldEl.scrollIntoView === "function") {
+        fieldEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
       }
     });
 
@@ -484,7 +497,11 @@ export default function AddRemove({ goBack }) {
   // };
 
   const saveTemplate = () => {
-    // Persist current active template (first element) to localStorage for future sessions
+    if (duplicateTemplateLabels.size > 0) {
+      const dups = [...duplicateTemplateLabels];
+      alert(`Duplicate labels are not allowed:\n- ${dups.join("\n- ")}`);
+      return;
+    }
     try {
       const toSave = Array.isArray(templates) ? templates : [[]];
       localStorage.setItem("templates", JSON.stringify(toSave));
@@ -495,29 +512,23 @@ export default function AddRemove({ goBack }) {
       alert("Failed to save template");
     }
   };
-
   const toTitleCase = (str) => {
     if (!str) return "";
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   };
-
-  // === Save Item ===
   // const saveItem = () => {
   //   if (!form.category) return alert("⚠️ Category is required!");
   //   if (!form.image) return alert("⚠️ Image is required!");
-
   //   const newItem = {
   //     id: editingItem ? editingItem.id : Date.now(),
   //     ...form,
   //     date: new Date().toISOString()
   //   };
-
   //   setItems((prev) =>
   //     editingItem ? prev.map((i) => (i.id === newItem.id ? newItem : i)) : [...prev, newItem]
   //   );
   //   setShowModal(false);
   // };
-
   return (
     <div className="addremove-container">
       <div className="header">
@@ -537,15 +548,12 @@ export default function AddRemove({ goBack }) {
           )}
         </div>
       </div>
-
       <button className="add-btn" onClick={openAddModal}>
         ➕ Add Item
       </button>
       <button className="add-btn" onClick={openTemplateModal}>
         ➕ Add saved template
       </button>
-
-      {/* Filters */}
       <div className="filters">
         <div className="search-wrapper">
           <input
@@ -597,7 +605,7 @@ export default function AddRemove({ goBack }) {
       </div>
 
       {/* Items List */}
-      <div className="items-list">
+      {/* <div className="items-list">
         {filteredItems.length === 0 && <p>No items found.</p>}
         {filteredItems.map((item) => (
           <div key={item.id} className="item-card compact">
@@ -656,7 +664,7 @@ export default function AddRemove({ goBack }) {
             </div>
           </div>
         ))}
-      </div>
+      </div> */}
 
       {/* Add/Edit Modal */}
       {showModal && (
@@ -822,7 +830,10 @@ export default function AddRemove({ goBack }) {
             </div>
 
             <div className="modal-actions">
-              <button className={editingItem ? "btn-update" : ""} onClick={saveItem}>
+              <button
+                className={editingItem ? "btn-update" : ""}
+                onClick={saveItem}
+              >
                 {editingItem ? "🔴 Update" : "✅ Save"}
               </button>
               <button onClick={() => setShowModal(false)}>❌ Cancel</button>
@@ -830,70 +841,220 @@ export default function AddRemove({ goBack }) {
           </div>
         </div>
       )}
-      {/* Template Modal */}      
-{showTemplateModal && (
-  <div className="modal-overlay">
-    <div className="modal">
-      <h3>📑 Template Builder</h3>
-      <p>Define default custom specification labels</p>
+      {/* Template Modal */}
+      {/* Template Modal */}
+      {showTemplateModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>📑 Template Builder</h3>
+            <p>Define default custom specification labels</p>
 
-      <DragDropContext
-        onDragEnd={(result) => {
-          if (!result.destination) return;
-          setTemplates((prev) => {
-            const base = Array.isArray(prev[0]) ? [...prev[0]] : [];
-            const [moved] = base.splice(result.source.index, 1);
-            base.splice(result.destination.index, 0, moved);
-            return [base];
-          });
-        }}
-      >
-        <Droppable droppableId="templateFields" direction="vertical">
-          {(provided) => (
-            <div
-              className="form-group"
-              {...provided.droppableProps}
-              ref={provided.innerRef}
+            <DragDropContext
+              onDragEnd={(result) => {
+                if (!result.destination) return;
+                setTemplates((prev) => {
+                  const base = Array.isArray(prev[0]) ? [...prev[0]] : [];
+                  const [moved] = base.splice(result.source.index, 1);
+                  base.splice(result.destination.index, 0, moved);
+                  return [base];
+                });
+              }}
             >
-              {(templates[0] || []).map((f, i) => (
-                <Draggable key={i} draggableId={`field-${(f?.label || '').toString()}-${i}`} index={i}>
-                  {(provided) => (
-                    <div
-                      className="spec-field"
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      style={{ ...provided.draggableProps.style }}
-                    >
-                      <span className="drag-handle" {...provided.dragHandleProps} style={{ cursor: 'grab' }}>≡</span>
-                      <input
-                        type="text"
-                        placeholder="Label"
-                        value={f.label || ""}
-                        onChange={(e) =>
-                          handleTemplateFieldChange(i, "label", e.target.value)
-                        }
-                      />
-                      <button onClick={() => removeTemplateField(i)}>🗑️</button>
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
+              <Droppable droppableId="templateFields" direction="vertical">
+                {(provided) => (
+                  <div
+                    className="form-group"
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                  >
+                    {(templates[0] || []).map((f, i) => (
+                      <Draggable
+                        key={i}
+                        draggableId={`field-${(
+                          f?.label || ""
+                        ).toString()}-${i}`}
+                        index={i}
+                      >
+                        {(provided) => (
+                          <div
+                            className="spec-field"
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            style={{ ...provided.draggableProps.style }}
+                          >
+                            <span
+                              className="drag-handle"
+                              {...provided.dragHandleProps}
+                              style={{ cursor: "grab" }}
+                            >
+                              ≡
+                            </span>
+                            <input
+                              type="text"
+                              placeholder="Label"
+                              value={f.label || ""}
+                              onChange={(e) =>
+                                setTemplates((prev) => {
+                                  const base = [...prev[0]];
+                                  base[i] = {
+                                    ...base[i],
+                                    label: toTitleCase(e.target.value),
+                                  };
+                                  return [base];
+                                })
+                              }
+                              className={
+                                duplicateTemplateLabels.has(
+                                  normalizeLabel(f.label)
+                                )
+                                  ? "input-dup"
+                                  : ""
+                              }
+                            />
+                            {duplicateTemplateLabels.has(
+                              normalizeLabel(f.label)
+                            ) && <span className="dup-hint">Duplicate</span>}
+                            <button
+                              onClick={() =>
+                                setTemplates((prev) => {
+                                  const base = [...prev[0]];
+                                  base.splice(i, 1);
+                                  return [base];
+                                })
+                              }
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+
+            <button
+              onClick={() =>
+                setTemplates((prev) =>
+                  [...prev].map((tpl) => [...tpl, { label: "", value: "" }])
+                )
+              }
+            >
+              ➕ Add Label
+            </button>
+
+            <div className="modal-actions">
+              <button
+                onClick={saveTemplate}
+                disabled={duplicateTemplateLabels.size > 0}
+              >
+                ✅ Save Template
+              </button>
+              <button onClick={() => setShowTemplateModal(false)}>
+                ❌ Cancel
+              </button>
             </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+          </div>
+        </div>
+      )}
+      {/* Items Table */}
+      <div className="items-table-container">
+        <table className="items-table">
+          <thead>
+            <tr>
+              <th>S.No</th>
+              <th>Image</th>
+              <th>Category</th>
+              <th>Names</th>
 
-      <button onClick={addTemplateField}>➕ Add Label</button>
+              {/* Dynamic Columns from Template */}
+              {(templates[0] || []).map((f, i) => (
+                <th key={i}>{f.label || `Field ${i + 1}`}</th>
+              ))}
 
-      <div className="modal-actions">
-        <button onClick={saveTemplate}>✅ Save Template</button>
-        <button onClick={() => setShowTemplateModal(false)}>❌ Cancel</button>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredItems.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={(templates[0]?.length || 0) + 7}
+                  style={{ textAlign: "center" }}
+                >
+                  No items found.
+                </td>
+              </tr>
+            ) : (
+              filteredItems.map((item, index) => (
+                <tr key={item.id}>
+                  <td>{index + 1}</td>
+                  <td>
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.category}
+                        style={{
+                          width: "60px",
+                          height: "60px",
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      "📷"
+                    )}
+                  </td>
+                  <td>{item.category}</td>
+                  <td>
+                    {item.names?.length > 0 ? item.names.join(", ") : "-"}
+                  </td>
+
+                  {/* Fill Dynamic Field Values */}
+                  {(templates[0] || []).map((tpl, i) => {
+                    const value =
+                      (item.dynamicFields || []).find(
+                        (f) => f.label === tpl.label
+                      )?.value || "-";
+                    return <td key={i}>{value}</td>;
+                  })}
+
+                  <td>
+                    {item.date ? new Date(item.date).toLocaleDateString() : "-"}
+                  </td>
+                  <td>
+                    {item.date
+                      ? new Date(item.date).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "-"}
+                  </td>
+                  <td>
+                    <button
+                      className="btn-edit"
+                      onClick={() => openEditModal(item)}
+                    >
+                      Edit
+                    </button>
+                    {isLoggedIn && (
+                      <button
+                        className="btn-delete"
+                        onClick={() => handleDelete(item.id)}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
-    </div>
-  </div>
-)}
-
 
       {/* Login Modal */}
       {showLoginModal && (
