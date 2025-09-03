@@ -88,11 +88,49 @@ export default function Login({ setUser }) {
           color: red;
           font-size: 0.9rem;
         }
+          .logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.logo-image {
+  width: 150px;      /* Adjust size as needed */
+  height: auto;
+  margin-bottom: 1rem;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.logo-icon {
+  font-size: 2rem;
+}
+
+.logo-text {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #1d3557;
+  letter-spacing: 2px;
+}
+
+.logo-sub {
+  font-size: 0.95rem;
+  color: #457b9d;
+}
+
       `}</style>
 
       <div className="login-container">
         <div className="login-card">
-          <h2 className="login-title">🏗️ GW-Stock Management</h2>
+          <div className="logo">
+            {/* <span className="logo-icon">📦</span> */}
+            <img src="/logo.png" alt="GWEE Logo" className="logo-image" />
+
+            <span className="logo-text">GWEE</span>
+            <span className="logo-sub">Stock Management</span>
+          </div>
+
           <p className="login-sub">Secure login for different roles</p>
 
           {/* Role Selection */}

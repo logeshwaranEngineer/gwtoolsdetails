@@ -6,6 +6,14 @@
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   padding: 20px;
 }
+/* .logo-image {
+  width: 10px;  
+  height: auto;
+  margin-bottom: 1rem;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+} */
 
 /* ===== Header ===== */
 .dashboard-header {
