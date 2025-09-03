@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import "../style/AddRemove.css";
 import { getAllItems, saveItemToDB, deleteItemFromDB } from "../server/db";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import Select from "react-select";
+
 export default function AddRemove({ goBack }) {
   const defaultCategoriesList = [
     "FRC ORANGE PANT",
@@ -160,6 +162,44 @@ export default function AddRemove({ goBack }) {
       return [[]];
     }
   });
+
+  const categoryOptions = [
+    { value: "", label: "All Categories" },
+    ...categories
+      .sort((a, b) => a.localeCompare(b))
+      .map((c) => ({
+        value: c,
+        label: c,
+      })),
+  ];
+  // Custom styles for react-select
+  const customStyles = {
+    control: (provided) => ({
+      ...provided,
+      width: "220px", // ✅ fixed width
+      minHeight: "38px",
+      fontSize: "14px",
+    }),
+    menu: (provided) => ({
+      ...provided,
+      width: "220px", // ✅ dropdown same width
+    }),
+    option: (provided) => ({
+      ...provided,
+      fontSize: "14px",
+      whiteSpace: "nowrap", // ✅ prevent line break
+      overflow: "hidden", // ✅ hide overflow
+      textOverflow: "ellipsis", // ✅ add "..."
+    }),
+    singleValue: (provided) => ({
+      ...provided,
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      maxWidth: "200px", // ✅ keep inside box
+    }),
+  };
+
   // === Duplicate Label Check Helpers ===
   const normalizeLabel = (s) => (s || "").trim().toLowerCase();
   const findDuplicateLabels = (list = []) => {
@@ -555,7 +595,7 @@ export default function AddRemove({ goBack }) {
         ➕ Add saved template
       </button>
       <div className="filters">
-        <div className="search-wrapper">
+        {/* <div className="search-wrapper">
           <input
             type="text"
             placeholder="🔍 Search by text..."
@@ -567,8 +607,20 @@ export default function AddRemove({ goBack }) {
               ×
             </span>
           )}
-        </div>
-        <select
+        </div> */}
+
+        <Select
+          options={categoryOptions}
+          value={categoryOptions.find((o) => o.value === filterCategory)}
+          onChange={(selected) =>
+            setFilterCategory(selected ? selected.value : "")
+          }
+          placeholder="🔍 Search categories..."
+          isClearable
+          isSearchable
+          styles={customStyles} // ✅ apply custom styles
+        />
+        {/* <select
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
         >
@@ -580,12 +632,13 @@ export default function AddRemove({ goBack }) {
                 {c}
               </option>
             ))}
-        </select>
+        </select> */}
         <label>
           Start Date:
           <input
             type="date"
             value={dateRange.start}
+            // placeholder=""
             onChange={(e) =>
               setDateRange({ ...dateRange, start: e.target.value })
             }
@@ -962,23 +1015,41 @@ export default function AddRemove({ goBack }) {
       {/* Items Table */}
       <div className="items-table-container">
         <table className="items-table">
+          {/* define per-column widths via colgroup for stable sticky offsets */}
+          <colgroup>
+            <col className="col-sn" />
+            <col className="col-image" />
+            <col className="col-category" />
+            <col className="col-names" />
+            {/* dynamic template columns */}
+            {(templates[0] || []).map((_, i) => (
+              <col className={`col-dyn col-dyn-${i}`} key={i} />
+            ))}
+            <col className="col-date" />
+            <col className="col-time" />
+            <col className="col-actions" />
+          </colgroup>
+
           <thead>
             <tr>
-              <th>S.No</th>
-              <th>Image</th>
-              <th>Category</th>
-              <th>Names</th>
+              <th className="col-sn">S.No</th>
+              <th className="col-image">Image</th>
+              <th className="col-category">Category</th>
+              {/* <th className="col-names">Names</th> */}
 
               {/* Dynamic Columns from Template */}
               {(templates[0] || []).map((f, i) => (
-                <th key={i}>{f.label || `Field ${i + 1}`}</th>
+                <th key={i} className={`col-dyn col-dyn-${i}`}>
+                  {f.label || `Field ${i + 1}`}
+                </th>
               ))}
 
-              <th>Date</th>
-              <th>Time</th>
-              <th>Actions</th>
+              <th className="col-date">Date</th>
+              <th className="col-time">Time</th>
+              <th className="col-actions">Actions</th>
             </tr>
           </thead>
+
           <tbody>
             {filteredItems.length === 0 ? (
               <tr>
@@ -992,40 +1063,45 @@ export default function AddRemove({ goBack }) {
             ) : (
               filteredItems.map((item, index) => (
                 <tr key={item.id}>
-                  <td>{index + 1}</td>
-                  <td>
+                  <td className="col-sn">{index + 1}</td>
+                  <td className="col-image">
                     {item.image ? (
                       <img
                         src={item.image}
                         alt={item.category}
                         style={{
-                          width: "60px",
-                          height: "60px",
+                          width: "56px",
+                          height: "56px",
                           objectFit: "cover",
+                          display: "block",
                         }}
                       />
                     ) : (
                       "📷"
                     )}
                   </td>
-                  <td>{item.category}</td>
-                  <td>
-                    {item.names?.length > 0 ? item.names.join(", ") : "-"}
-                  </td>
+                  <td className="col-category">{item.category}</td>
+                  {/* <td className="col-names">
+              {item.names?.length > 0 ? item.names.join(", ") : "-"}
+            </td> */}
 
-                  {/* Fill Dynamic Field Values */}
+                  {/* dynamic fields */}
                   {(templates[0] || []).map((tpl, i) => {
                     const value =
                       (item.dynamicFields || []).find(
                         (f) => f.label === tpl.label
                       )?.value || "-";
-                    return <td key={i}>{value}</td>;
+                    return (
+                      <td key={i} className={`col-dyn col-dyn-${i}`}>
+                        {value}
+                      </td>
+                    );
                   })}
 
-                  <td>
+                  <td className="col-date">
                     {item.date ? new Date(item.date).toLocaleDateString() : "-"}
                   </td>
-                  <td>
+                  <td className="col-time">
                     {item.date
                       ? new Date(item.date).toLocaleTimeString([], {
                           hour: "2-digit",
@@ -1033,7 +1109,7 @@ export default function AddRemove({ goBack }) {
                         })
                       : "-"}
                   </td>
-                  <td>
+                  <td className="col-actions">
                     <button
                       className="btn-edit"
                       onClick={() => openEditModal(item)}

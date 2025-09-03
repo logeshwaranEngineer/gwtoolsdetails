@@ -56,7 +56,7 @@ export default function Dashboard({ user, setUser }) {
     <div className="dashboard-container">
       <div className="dashboard-header">
             <img src="/logo.png" alt="GWEE Logo" className="logo-image" />
-        <h2>GW-Stock Management</h2>
+        <h2>GWEE-Stock Management</h2>
 
         <p>
           Welcome, <b>{user ? user.toUpperCase() : "Guest"}</b>
