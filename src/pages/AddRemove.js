@@ -190,6 +190,10 @@ export default function AddRemove({ goBack }) {
       whiteSpace: "nowrap", // ✅ prevent line break
       overflow: "hidden", // ✅ hide overflow
       textOverflow: "ellipsis", // ✅ add "..."
+      backgroundColor: "#fff",
+
+      cursor: "pointer",
+      zIndex: 999,
     }),
     singleValue: (provided) => ({
       ...provided,
@@ -618,8 +622,18 @@ export default function AddRemove({ goBack }) {
           placeholder="🔍 Search categories..."
           isClearable
           isSearchable
-          styles={customStyles} // ✅ apply custom styles
+          styles={{
+            ...customStyles,
+            menuPortal: (provided) => ({
+              ...provided,
+              zIndex: 9999,
+            }),
+          }}
+          menuPortalTarget={document.body}
+          menuPosition="fixed"
+          menuPlacement="auto"
         />
+
         {/* <select
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
