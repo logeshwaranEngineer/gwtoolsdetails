@@ -2,6 +2,12 @@ import React, { useState, useEffect, useRef } from "react";
 import "../style/AddRemove.css";
 import { getAllItems, saveItemToDB, deleteItemFromDB } from "../server/db";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import MobileDragDrop from "../components/MobileDragDrop";
+import {
+  shouldUseMobileDragDrop,
+  isIOS,
+  isSafari,
+} from "../utils/deviceDetection";
 import Select from "react-select";
 
 export default function AddRemove({ goBack, user }) {
@@ -50,7 +56,7 @@ export default function AddRemove({ goBack, user }) {
         setItems(allItems);
 
         setCategories(buildCategories(allItems)); // ✅ clean + safe
-        
+
         // Update template to include all unique fields from all items
         updateTemplateWithAllFields(allItems);
       } catch (e) {
@@ -91,10 +97,10 @@ export default function AddRemove({ goBack, user }) {
     try {
       // Get all unique field labels from all items
       const allFieldLabels = new Set();
-      
-      items.forEach(item => {
+
+      items.forEach((item) => {
         if (Array.isArray(item.dynamicFields)) {
-          item.dynamicFields.forEach(field => {
+          item.dynamicFields.forEach((field) => {
             if (field.label && field.label.trim()) {
               allFieldLabels.add(field.label.trim());
             }
@@ -104,19 +110,21 @@ export default function AddRemove({ goBack, user }) {
 
       // Convert to array and sort for consistent order
       const sortedLabels = Array.from(allFieldLabels).sort();
-      
+
       // Create comprehensive template
-      const comprehensiveTemplate = sortedLabels.map(label => ({
+      const comprehensiveTemplate = sortedLabels.map((label) => ({
         label: label,
-        value: ""
+        value: "",
       }));
 
       // Only update if we have fields and the template is different
       if (comprehensiveTemplate.length > 0) {
-        const currentTemplate = Array.isArray(templates?.[0]) ? templates[0] : [];
-        const currentLabels = currentTemplate.map(t => t.label).sort();
+        const currentTemplate = Array.isArray(templates?.[0])
+          ? templates[0]
+          : [];
+        const currentLabels = currentTemplate.map((t) => t.label).sort();
         const newLabels = sortedLabels.sort();
-        
+
         // Check if templates are different
         if (JSON.stringify(currentLabels) !== JSON.stringify(newLabels)) {
           const newTemplates = [comprehensiveTemplate];
@@ -191,20 +199,24 @@ export default function AddRemove({ goBack, user }) {
   // Use global user role instead of internal login
   const isAdmin = user === "admin";
   const isSupervisor = user === "supervisor";
-  
+
   // Check if navigated from Employee Management
   const [contextMessage, setContextMessage] = useState("");
   useEffect(() => {
     const context = localStorage.getItem("addRemoveContext");
     if (context) {
       if (context === "issue") {
-        setContextMessage("📦 Issue Products - Use this page to manage inventory for employee issuance");
+        setContextMessage(
+          "📦 Issue Products - Use this page to manage inventory for employee issuance"
+        );
       } else if (context === "return") {
-        setContextMessage("🔄 Return Products - Use this page to manage inventory for employee returns");
+        setContextMessage(
+          "🔄 Return Products - Use this page to manage inventory for employee returns"
+        );
       }
       // Clear context after showing
       localStorage.removeItem("addRemoveContext");
-      
+
       // Clear message after 5 seconds
       setTimeout(() => setContextMessage(""), 5000);
     }
@@ -271,50 +283,58 @@ export default function AddRemove({ goBack, user }) {
 
   // === Enhanced Duplicate Label Check Helpers ===
   const normalizeLabel = (s) => (s || "").trim().toLowerCase();
-  
+
   // Common spelling variations and similar words
   const labelVariations = {
-    'quantity': ['qty', 'quanitity', 'quanity', 'quannity', 'quantiy', 'qantity', 'quantitiy'],
-    'quality': ['qualiy', 'qualty', 'qualitiy', 'qulaity'],
-    'material': ['materail', 'matrial', 'meterial', 'materal'],
-    'category': ['catagory', 'categry', 'catgory', 'categorey'],
-    'description': ['descriptn', 'descrption', 'discription', 'descripton'],
-    'specification': ['spec', 'specificatn', 'specfication', 'specifiction'],
-    'dimension': ['dimention', 'dimentions', 'dimesion'],
-    'weight': ['wieght', 'weght', 'wight'],
-    'height': ['hieght', 'heght', 'hight'],
-    'width': ['widht', 'wdth', 'widt'],
-    'length': ['lenght', 'lenth', 'legth'],
-    'diameter': ['diamter', 'diametr', 'diametre'],
-    'thickness': ['thikness', 'thicknes', 'thiknes'],
-    'color': ['colour', 'colr', 'clor'],
-    'size': ['sze', 'siz', 'sie'],
-    'grade': ['grd', 'graed', 'grae'],
-    'model': ['modl', 'modle', 'mdl'],
-    'brand': ['brnd', 'bran', 'bradn'],
-    'type': ['typ', 'tpe', 'tyep'],
-    'code': ['cod', 'cde', 'coode'],
-    'serial': ['srial', 'seril', 'serail'],
-    'number': ['no', 'num', 'numbr', 'numer'],
-    'date': ['dt', 'dte', 'dat'],
-    'price': ['pric', 'prce', 'prise'],
-    'cost': ['cst', 'coost', 'cot'],
-    'value': ['val', 'valu', 'vlue']
+    quantity: [
+      "qty",
+      "quanitity",
+      "quanity",
+      "quannity",
+      "quantiy",
+      "qantity",
+      "quantitiy",
+    ],
+    quality: ["qualiy", "qualty", "qualitiy", "qulaity"],
+    material: ["materail", "matrial", "meterial", "materal"],
+    category: ["catagory", "categry", "catgory", "categorey"],
+    description: ["descriptn", "descrption", "discription", "descripton"],
+    specification: ["spec", "specificatn", "specfication", "specifiction"],
+    dimension: ["dimention", "dimentions", "dimesion"],
+    weight: ["wieght", "weght", "wight"],
+    height: ["hieght", "heght", "hight"],
+    width: ["widht", "wdth", "widt"],
+    length: ["lenght", "lenth", "legth"],
+    diameter: ["diamter", "diametr", "diametre"],
+    thickness: ["thikness", "thicknes", "thiknes"],
+    color: ["colour", "colr", "clor"],
+    size: ["sze", "siz", "sie"],
+    grade: ["grd", "graed", "grae"],
+    model: ["modl", "modle", "mdl"],
+    brand: ["brnd", "bran", "bradn"],
+    type: ["typ", "tpe", "tyep"],
+    code: ["cod", "cde", "coode"],
+    serial: ["srial", "seril", "serail"],
+    number: ["no", "num", "numbr", "numer"],
+    date: ["dt", "dte", "dat"],
+    price: ["pric", "prce", "prise"],
+    cost: ["cst", "coost", "cot"],
+    value: ["val", "valu", "vlue"],
   };
 
   // Function to get all variations of a label
   const getLabelVariations = (label) => {
     const normalized = normalizeLabel(label);
     const variations = new Set([normalized]);
-    
+
     // Check if this label matches any known variations
     for (const [standard, variants] of Object.entries(labelVariations)) {
       if (normalized === standard || variants.includes(normalized)) {
         variations.add(standard);
-        variants.forEach(v => variations.add(v));
+        variants.forEach((v) => variations.add(v));
       }
     }
-    
+
     return variations;
   };
 
@@ -322,14 +342,14 @@ export default function AddRemove({ goBack, user }) {
   const findDuplicateLabels = (list = []) => {
     const labelGroups = new Map(); // Maps normalized label to array of original labels
     const duplicates = new Set();
-    
+
     list.forEach((f) => {
       const originalLabel = (f?.label || "").trim();
       if (!originalLabel) return;
-      
+
       const variations = getLabelVariations(originalLabel);
       let foundGroup = null;
-      
+
       // Check if any variation matches existing groups
       for (const variation of variations) {
         if (labelGroups.has(variation)) {
@@ -337,12 +357,12 @@ export default function AddRemove({ goBack, user }) {
           break;
         }
       }
-      
+
       if (foundGroup) {
         // Add to existing group
         labelGroups.get(foundGroup).push(originalLabel);
         // Mark all labels in this group as duplicates
-        labelGroups.get(foundGroup).forEach(label => {
+        labelGroups.get(foundGroup).forEach((label) => {
           duplicates.add(normalizeLabel(label));
         });
       } else {
@@ -351,20 +371,20 @@ export default function AddRemove({ goBack, user }) {
         labelGroups.set(firstVariation, [originalLabel]);
       }
     });
-    
+
     return duplicates;
   };
 
   // Function to check if a new label would be a duplicate
   const wouldBeDuplicate = (newLabel, existingLabels) => {
     if (!newLabel || !newLabel.trim()) return false;
-    
+
     const newVariations = getLabelVariations(newLabel);
-    
-    return existingLabels.some(existingLabel => {
+
+    return existingLabels.some((existingLabel) => {
       if (!existingLabel || !existingLabel.trim()) return false;
       const existingVariations = getLabelVariations(existingLabel);
-      
+
       // Check if any variation of new label matches any variation of existing label
       for (const newVar of newVariations) {
         for (const existingVar of existingVariations) {
@@ -467,16 +487,39 @@ export default function AddRemove({ goBack, user }) {
   };
 
   // === Image Selection ===
+  const [showImageOptions, setShowImageOptions] = useState(false);
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+
   const handleImageSelect = () => {
-    const choice = window.confirm(
-      "Click OK to capture a photo, Cancel to upload from files."
-    );
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    if (choice) input.capture = "environment";
-    input.onchange = handleImageChange;
-    input.click();
+    // For iOS Safari, show custom modal instead of confirm dialog
+    if (isIOS() && isSafari()) {
+      setShowImageOptions(true);
+    } else {
+      const choice = window.confirm(
+        "Click OK to capture a photo, Cancel to upload from files."
+      );
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      if (choice) input.capture = "environment";
+      input.onchange = handleImageChange;
+      input.click();
+    }
+  };
+
+  const handleCameraCapture = () => {
+    setShowImageOptions(false);
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click();
+    }
+  };
+
+  const handleFileUpload = () => {
+    setShowImageOptions(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   const handleImageChange = (e) => {
@@ -492,6 +535,11 @@ export default function AddRemove({ goBack, user }) {
       }));
     };
     reader.readAsDataURL(file);
+
+    // Reset input values to allow selecting the same file again
+    if (e.target) {
+      e.target.value = "";
+    }
   };
 
   const handleDelete = async (id) => {
@@ -500,7 +548,7 @@ export default function AddRemove({ goBack, user }) {
       await deleteItemFromDB(id);
       const updatedItems = await getAllItems();
       setItems(updatedItems);
-      
+
       // Update template after deletion to reflect remaining fields
       updateTemplateWithAllFields(updatedItems);
     } catch (err) {
@@ -566,24 +614,26 @@ export default function AddRemove({ goBack, user }) {
 
   const handleDynamicFieldChange = (i, key, value) => {
     const base = Array.isArray(form.dynamicFields) ? form.dynamicFields : [];
-    
+
     // If changing label, check for duplicates
     if (key === "label" && value && value.trim()) {
       const existingLabels = base
-        .map((f, idx) => idx !== i ? f.label : null) // Exclude current field
+        .map((f, idx) => (idx !== i ? f.label : null)) // Exclude current field
         .filter(Boolean);
-      
+
       if (wouldBeDuplicate(value.trim(), existingLabels)) {
         // Find the conflicting label
-        const conflictingLabel = existingLabels.find(existing => 
+        const conflictingLabel = existingLabels.find((existing) =>
           wouldBeDuplicate(value.trim(), [existing])
         );
-        
-        alert(`⚠️ Duplicate field detected!\n\n"${value.trim()}" is similar to existing field "${conflictingLabel}".\n\nPlease use a different name or remove the existing field first.`);
+
+        alert(
+          `⚠️ Duplicate field detected!\n\n"${value.trim()}" is similar to existing field "${conflictingLabel}".\n\nPlease use a different name or remove the existing field first.`
+        );
         return; // Don't update the field
       }
     }
-    
+
     const updated = base.map((f, idx) =>
       idx === i ? { ...f, [key]: toTitleCase(value) } : f
     );
@@ -745,26 +795,26 @@ export default function AddRemove({ goBack, user }) {
     <div className="addremove-container">
       <div className="header">
         <h2>📦 Manage Inventory - Add & Remove </h2>
-        <div>
-          {/* Global login controls, nothing local here */}
-        </div>
+        <div>{/* Global login controls, nothing local here */}</div>
       </div>
-      
+
       {/* Context message from Employee Management */}
       {contextMessage && (
-        <div style={{
-          background: '#e3f2fd',
-          border: '1px solid #2196f3',
-          borderRadius: '4px',
-          padding: '12px',
-          margin: '10px 0',
-          color: '#1976d2',
-          fontWeight: 'bold'
-        }}>
+        <div
+          style={{
+            background: "#e3f2fd",
+            border: "1px solid #2196f3",
+            borderRadius: "4px",
+            padding: "12px",
+            margin: "10px 0",
+            color: "#1976d2",
+            fontWeight: "bold",
+          }}
+        >
           {contextMessage}
         </div>
       )}
-      
+
       {/* Only admin can add items */}
       {isAdmin && (
         <>
@@ -774,8 +824,8 @@ export default function AddRemove({ goBack, user }) {
           <button className="add-btn" onClick={openTemplateModal}>
             ➕ Add saved template
           </button>
-          <button 
-            className="add-btn" 
+          <button
+            className="add-btn"
             onClick={() => updateTemplateWithAllFields(items)}
             title="Refresh table columns to show all fields from all items"
           >
@@ -783,19 +833,22 @@ export default function AddRemove({ goBack, user }) {
           </button>
         </>
       )}
-      
+
       {/* Show message for supervisor */}
       {isSupervisor && (
-        <div style={{
-          background: '#fff3cd',
-          border: '1px solid #ffeaa7',
-          borderRadius: '4px',
-          padding: '10px',
-          margin: '10px 0',
-          color: '#856404',
-          textAlign: 'center'
-        }}>
-          📋 Supervisor View - You can view inventory but cannot add/edit/delete items
+        <div
+          style={{
+            background: "#fff3cd",
+            border: "1px solid #ffeaa7",
+            borderRadius: "4px",
+            padding: "10px",
+            margin: "10px 0",
+            color: "#856404",
+            textAlign: "center",
+          }}
+        >
+          📋 Supervisor View - You can view inventory but cannot add/edit/delete
+          items
         </div>
       )}
       <div className="filters">
@@ -997,58 +1050,64 @@ export default function AddRemove({ goBack, user }) {
                 {form.dynamicFields.map((f, i) => {
                   // Check if this field is a duplicate
                   const otherLabels = form.dynamicFields
-                    .map((field, idx) => idx !== i ? field.label : null)
+                    .map((field, idx) => (idx !== i ? field.label : null))
                     .filter(Boolean);
-                  const isDuplicate = f.label && wouldBeDuplicate(f.label, otherLabels);
-                  
+                  const isDuplicate =
+                    f.label && wouldBeDuplicate(f.label, otherLabels);
+
                   return (
-                  <div key={i} className="spec-field">
-                    <input
-                      type="text"
-                      placeholder="Enter the Label name"
-                      list="label-options"
-                      value={f.label}
-                      onChange={(e) =>
-                        handleDynamicFieldChange(i, "label", e.target.value)
-                      }
-                      className={isDuplicate ? "input-dup" : ""}
-                    />
-                    {isDuplicate && <span className="dup-hint">Duplicate!</span>}
-
-                    {/* Smart editable dropdowns */}
-                    {[
-                      "quantity",
-                      "size",
-                      "color",
-                      "width",
-                      "height",
-                      "material",
-                      "grade",
-                    ].includes(f.label.toLowerCase()) ? (
+                    <div key={i} className="spec-field">
                       <input
                         type="text"
-                        list={`${f.label.toLowerCase()}-options`}
-                        placeholder={`Enter or choose ${f.label}`}
-                        value={f.value}
+                        placeholder="Enter the Label name"
+                        list="label-options"
+                        value={f.label}
                         onChange={(e) =>
-                          handleDynamicFieldChange(i, "value", e.target.value)
+                          handleDynamicFieldChange(i, "label", e.target.value)
                         }
+                        className={isDuplicate ? "input-dup" : ""}
                       />
-                    ) : (
-                      <input
-                        type="text"
-                        placeholder="Value"
-                        value={f.value}
-                        onChange={(e) =>
-                          handleDynamicFieldChange(i, "value", e.target.value)
-                        }
-                      />
-                    )}
+                      {isDuplicate && (
+                        <span className="dup-hint">Duplicate!</span>
+                      )}
 
-                    <button type="button" onClick={() => removeDynamicField(i)}>
-                      🗑️
-                    </button>
-                  </div>
+                      {/* Smart editable dropdowns */}
+                      {[
+                        "quantity",
+                        "size",
+                        "color",
+                        "width",
+                        "height",
+                        "material",
+                        "grade",
+                      ].includes(f.label.toLowerCase()) ? (
+                        <input
+                          type="text"
+                          list={`${f.label.toLowerCase()}-options`}
+                          placeholder={`Enter or choose ${f.label}`}
+                          value={f.value}
+                          onChange={(e) =>
+                            handleDynamicFieldChange(i, "value", e.target.value)
+                          }
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder="Value"
+                          value={f.value}
+                          onChange={(e) =>
+                            handleDynamicFieldChange(i, "value", e.target.value)
+                          }
+                        />
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => removeDynamicField(i)}
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -1111,31 +1170,40 @@ export default function AddRemove({ goBack, user }) {
                 className={editingItem ? "btn-update" : ""}
                 onClick={() => {
                   // Check for duplicates before saving
-                  const labels = form.dynamicFields.map(f => f.label).filter(Boolean);
-                  const hasDuplicates = labels.some((label, index) => 
-                    wouldBeDuplicate(label, labels.filter((_, i) => i !== index))
+                  const labels = form.dynamicFields
+                    .map((f) => f.label)
+                    .filter(Boolean);
+                  const hasDuplicates = labels.some((label, index) =>
+                    wouldBeDuplicate(
+                      label,
+                      labels.filter((_, i) => i !== index)
+                    )
                   );
-                  
+
                   if (hasDuplicates) {
-                    alert("⚠️ Cannot save item with duplicate fields!\n\nPlease remove or rename duplicate fields before saving.");
+                    alert(
+                      "⚠️ Cannot save item with duplicate fields!\n\nPlease remove or rename duplicate fields before saving."
+                    );
                     return;
                   }
-                  
+
                   saveItem();
                 }}
                 disabled={form.dynamicFields.some((f, i) => {
                   const otherLabels = form.dynamicFields
-                    .map((field, idx) => idx !== i ? field.label : null)
+                    .map((field, idx) => (idx !== i ? field.label : null))
                     .filter(Boolean);
                   return f.label && wouldBeDuplicate(f.label, otherLabels);
                 })}
                 style={{
                   opacity: form.dynamicFields.some((f, i) => {
                     const otherLabels = form.dynamicFields
-                      .map((field, idx) => idx !== i ? field.label : null)
+                      .map((field, idx) => (idx !== i ? field.label : null))
                       .filter(Boolean);
                     return f.label && wouldBeDuplicate(f.label, otherLabels);
-                  }) ? 0.5 : 1
+                  })
+                    ? 0.5
+                    : 1,
                 }}
               >
                 {editingItem ? "🔴 Update" : "✅ Save"}
@@ -1153,107 +1221,214 @@ export default function AddRemove({ goBack, user }) {
             <h3>📑 Template Builder</h3>
             <p>Define default custom specification labels</p>
 
-            <DragDropContext
-              onDragEnd={(result) => {
-                if (!result.destination) return;
-                setTemplates((prev) => {
-                  const base = Array.isArray(prev[0]) ? [...prev[0]] : [];
-                  const [moved] = base.splice(result.source.index, 1);
-                  base.splice(result.destination.index, 0, moved);
-                  return [base];
-                });
-              }}
-            >
-              <Droppable droppableId="templateFields" direction="vertical">
-                {(provided) => (
+            {shouldUseMobileDragDrop() ? (
+              // Mobile-friendly drag and drop
+              <MobileDragDrop
+                items={(templates[0] || []).map((f, i) => ({
+                  ...f,
+                  id: `field-${i}`,
+                }))}
+                onReorder={(newItems) => {
+                  setTemplates([
+                    newItems.map((item) => ({
+                      label: item.label,
+                      value: item.value,
+                    })),
+                  ]);
+                }}
+                renderItem={(f, i, { listeners, isDragging }) => (
                   <div
-                    className="form-group"
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
+                    className={`spec-field ${isDragging ? "dragging" : ""}`}
+                    style={{ opacity: isDragging ? 0.5 : 1 }}
                   >
-                    {(templates[0] || []).map((f, i) => (
-                      <Draggable
-                        key={i}
-                        draggableId={`field-${(
-                          f?.label || ""
-                        ).toString()}-${i}`}
-                        index={i}
-                      >
-                        {(provided) => (
-                          <div
-                            className="spec-field"
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            style={{ ...provided.draggableProps.style }}
-                          >
-                            <span
-                              className="drag-handle"
-                              {...provided.dragHandleProps}
-                              style={{ cursor: "grab" }}
-                            >
-                              ≡
-                            </span>
-                            <input
-                              type="text"
-                              placeholder="Label"
-                              value={f.label || ""}
-                              onChange={(e) => {
-                                const newValue = e.target.value;
-                                if (newValue && newValue.trim()) {
-                                  // Check for duplicates in template
-                                  const existingLabels = (templates[0] || [])
-                                    .map((field, idx) => idx !== i ? field.label : null)
-                                    .filter(Boolean);
-                                  
-                                  if (wouldBeDuplicate(newValue.trim(), existingLabels)) {
-                                    const conflictingLabel = existingLabels.find(existing => 
-                                      wouldBeDuplicate(newValue.trim(), [existing])
-                                    );
-                                    alert(`⚠️ Duplicate template field detected!\n\n"${newValue.trim()}" is similar to existing field "${conflictingLabel}".\n\nPlease use a different name or remove the existing field first.`);
-                                    return;
-                                  }
-                                }
-                                
-                                setTemplates((prev) => {
-                                  const base = [...prev[0]];
-                                  base[i] = {
-                                    ...base[i],
-                                    label: toTitleCase(newValue),
-                                  };
-                                  return [base];
-                                });
-                              }}
-                              className={
-                                duplicateTemplateLabels.has(
-                                  normalizeLabel(f.label)
-                                )
-                                  ? "input-dup"
-                                  : ""
-                              }
-                            />
-                            {duplicateTemplateLabels.has(
-                              normalizeLabel(f.label)
-                            ) && <span className="dup-hint">Duplicate</span>}
-                            <button
-                              onClick={() =>
-                                setTemplates((prev) => {
-                                  const base = [...prev[0]];
-                                  base.splice(i, 1);
-                                  return [base];
-                                })
-                              }
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
+                    <span
+                      className="drag-handle"
+                      {...listeners}
+                      style={{
+                        cursor: "grab",
+                        touchAction: "none",
+                        userSelect: "none",
+                      }}
+                    >
+                      ≡
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="Label"
+                      value={f.label || ""}
+                      onChange={(e) => {
+                        const newValue = e.target.value;
+                        if (newValue && newValue.trim()) {
+                          // Check for duplicates in template
+                          const existingLabels = (templates[0] || [])
+                            .map((field, idx) =>
+                              idx !== i ? field.label : null
+                            )
+                            .filter(Boolean);
+
+                          if (
+                            wouldBeDuplicate(newValue.trim(), existingLabels)
+                          ) {
+                            const conflictingLabel = existingLabels.find(
+                              (existing) =>
+                                wouldBeDuplicate(newValue.trim(), [existing])
+                            );
+                            alert(
+                              `⚠️ Duplicate template field detected!\n\n"${newValue.trim()}" is similar to existing field "${conflictingLabel}".\n\nPlease use a different name or remove the existing field first.`
+                            );
+                            return;
+                          }
+                        }
+
+                        setTemplates((prev) => {
+                          const base = [...prev[0]];
+                          base[i] = {
+                            ...base[i],
+                            label: toTitleCase(newValue),
+                          };
+                          return [base];
+                        });
+                      }}
+                      className={
+                        duplicateTemplateLabels.has(normalizeLabel(f.label))
+                          ? "input-dup"
+                          : ""
+                      }
+                    />
+                    {duplicateTemplateLabels.has(normalizeLabel(f.label)) && (
+                      <span className="dup-hint">Duplicate</span>
+                    )}
+                    <button
+                      onClick={() =>
+                        setTemplates((prev) => {
+                          const base = [...prev[0]];
+                          base.splice(i, 1);
+                          return [base];
+                        })
+                      }
+                    >
+                      🗑️
+                    </button>
                   </div>
                 )}
-              </Droppable>
-            </DragDropContext>
+                className="form-group"
+              />
+            ) : (
+              // Desktop drag and drop (original implementation)
+              <DragDropContext
+                onDragEnd={(result) => {
+                  if (!result.destination) return;
+                  setTemplates((prev) => {
+                    const base = Array.isArray(prev[0]) ? [...prev[0]] : [];
+                    const [moved] = base.splice(result.source.index, 1);
+                    base.splice(result.destination.index, 0, moved);
+                    return [base];
+                  });
+                }}
+              >
+                <Droppable droppableId="templateFields" direction="vertical">
+                  {(provided) => (
+                    <div
+                      className="form-group"
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                    >
+                      {(templates[0] || []).map((f, i) => (
+                        <Draggable
+                          key={i}
+                          draggableId={`field-${(
+                            f?.label || ""
+                          ).toString()}-${i}`}
+                          index={i}
+                        >
+                          {(provided) => (
+                            <div
+                              className="spec-field"
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              style={{ ...provided.draggableProps.style }}
+                            >
+                              <span
+                                className="drag-handle"
+                                {...provided.dragHandleProps}
+                                style={{ cursor: "grab" }}
+                              >
+                                ≡
+                              </span>
+                              <input
+                                type="text"
+                                placeholder="Label"
+                                value={f.label || ""}
+                                onChange={(e) => {
+                                  const newValue = e.target.value;
+                                  if (newValue && newValue.trim()) {
+                                    // Check for duplicates in template
+                                    const existingLabels = (templates[0] || [])
+                                      .map((field, idx) =>
+                                        idx !== i ? field.label : null
+                                      )
+                                      .filter(Boolean);
+
+                                    if (
+                                      wouldBeDuplicate(
+                                        newValue.trim(),
+                                        existingLabels
+                                      )
+                                    ) {
+                                      const conflictingLabel =
+                                        existingLabels.find((existing) =>
+                                          wouldBeDuplicate(newValue.trim(), [
+                                            existing,
+                                          ])
+                                        );
+                                      alert(
+                                        `⚠️ Duplicate template field detected!\n\n"${newValue.trim()}" is similar to existing field "${conflictingLabel}".\n\nPlease use a different name or remove the existing field first.`
+                                      );
+                                      return;
+                                    }
+                                  }
+
+                                  setTemplates((prev) => {
+                                    const base = [...prev[0]];
+                                    base[i] = {
+                                      ...base[i],
+                                      label: toTitleCase(newValue),
+                                    };
+                                    return [base];
+                                  });
+                                }}
+                                className={
+                                  duplicateTemplateLabels.has(
+                                    normalizeLabel(f.label)
+                                  )
+                                    ? "input-dup"
+                                    : ""
+                                }
+                              />
+                              {duplicateTemplateLabels.has(
+                                normalizeLabel(f.label)
+                              ) && <span className="dup-hint">Duplicate</span>}
+                              <button
+                                onClick={() =>
+                                  setTemplates((prev) => {
+                                    const base = [...prev[0]];
+                                    base.splice(i, 1);
+                                    return [base];
+                                  })
+                                }
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+            )}
 
             <button
               onClick={() =>
@@ -1304,7 +1479,7 @@ export default function AddRemove({ goBack, user }) {
               {/* <th className="col-names">Names</th> */}
               {(templates[0] || []).map((f, i) => (
                 <th key={i} className={`col-dyn col-dyn-${i}`}>
-                  {f.label || `Field ${i + 1}`}
+                  {(f.label && f.label.trim()) || `Field ${i + 1}`}
                 </th>
               ))}
               <th className="col-date">Date</th>
@@ -1388,7 +1563,7 @@ export default function AddRemove({ goBack, user }) {
                       </button>
                     )}
                     {!isAdmin && !isSupervisor && (
-                      <span style={{ color: '#999', fontStyle: 'italic' }}>
+                      <span style={{ color: "#999", fontStyle: "italic" }}>
                         View Only
                       </span>
                     )}
@@ -1400,6 +1575,76 @@ export default function AddRemove({ goBack, user }) {
         </table>
       </div>
 
+      {/* Hidden input elements for iOS Safari compatibility */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleImageChange}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={handleImageChange}
+      />
+
+      {/* Custom Image Options Modal for iOS Safari */}
+      {showImageOptions && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: '300px', textAlign: 'center' }}>
+            <h3>📸 Select Image Source</h3>
+            <p>Choose how you want to add an image:</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', margin: '20px 0' }}>
+              <button 
+                onClick={handleCameraCapture}
+                style={{ 
+                  padding: '15px', 
+                  fontSize: '16px', 
+                  backgroundColor: '#007bff', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                📸 Take Photo
+              </button>
+              <button 
+                onClick={handleFileUpload}
+                style={{ 
+                  padding: '15px', 
+                  fontSize: '16px', 
+                  backgroundColor: '#28a745', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                📂 Choose from Files
+              </button>
+              <button 
+                onClick={() => setShowImageOptions(false)}
+                style={{ 
+                  padding: '10px', 
+                  fontSize: '14px', 
+                  backgroundColor: '#6c757d', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                ❌ Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

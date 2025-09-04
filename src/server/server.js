@@ -32,8 +32,23 @@ app.get("/categories", (req, res) => {
 });
 
 // ✅ Add new category
+// app.post("/categories", (req, res) => {
+//   const { category, name, quantity, spec } = req.body;
+//   db.run(
+//     "INSERT INTO categories (category, name, quantity, spec) VALUES (?, ?, ?, ?)",
+//     [category, name, quantity, spec],
+//     function (err) {
+//       if (err) res.status(500).json({ error: err.message });
+//       else res.json({ id: this.lastID, categodry, name, quantity, spec });
+//     }
+//   );
+// });
 app.post("/categories", (req, res) => {
   const { category, name, quantity, spec } = req.body;
+  // Prevent saving if name is empty
+  if (!name || name.trim() === "") {
+    return res.status(400).json({ error: "Name is required" });
+  }
   db.run(
     "INSERT INTO categories (category, name, quantity, spec) VALUES (?, ?, ?, ?)",
     [category, name, quantity, spec],
@@ -43,7 +58,6 @@ app.post("/categories", (req, res) => {
     }
   );
 });
-
 // ✅ Delete category
 app.delete("/categories/:id", (req, res) => {
   db.run("DELETE FROM categories WHERE id = ?", [req.params.id], function (err) {

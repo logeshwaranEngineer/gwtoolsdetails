@@ -266,10 +266,66 @@
   background: #eee;
   border-radius: 4px;
   margin-right: 6px;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 .drag-handle:active {
   cursor: grabbing;
+}
+
+/* Mobile-specific drag handle improvements */
+@media (max-width: 767px) {
+  .drag-handle {
+    padding: 8px 10px;
+    font-size: 18px;
+    background: #007bff;
+    color: white;
+    border-radius: 6px;
+    min-width: 40px;
+    text-align: center;
+  }
+  
+  .drag-handle:active,
+  .drag-handle:focus {
+    background: #0056b3;
+    transform: scale(1.1);
+  }
+}
+
+/* Dragging state styles */
+.spec-field.dragging {
+  opacity: 0.5;
+  transform: rotate(2deg);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Touch-friendly improvements for mobile */
+@media (max-width: 767px) {
+  .spec-field {
+    padding: 8px;
+    margin-bottom: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #f9f9f9;
+  }
+  
+  .spec-field input {
+    font-size: 16px;
+    padding: 12px;
+    border-radius: 6px;
+  }
+  
+  .spec-field button {
+    font-size: 18px;
+    padding: 10px 12px;
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 /* --- Search --- */
