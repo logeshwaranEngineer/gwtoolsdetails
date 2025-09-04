@@ -3,7 +3,7 @@ import { validateUser } from "../utils/storage";
 import { Eye, EyeOff } from "lucide-react"; // ✅ password visibility icons
 
 export default function Login({ setUser }) {
-  const [role, setRole] = useState("Admin");
+  const [role, setRole] = useState("admin");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -12,7 +12,7 @@ export default function Login({ setUser }) {
     if (validateUser(role, password)) {
       setUser(role);
     } else {
-      setError("❌ Invalid password!");
+      setError(role === "admin" ? "❌ Invalid password!" : "❌ Invalid role");
     }
   };
 
@@ -139,28 +139,29 @@ export default function Login({ setUser }) {
             onChange={(e) => setRole(e.target.value)}
             className="login-input"
           >
-            <option value="boss">👔 Boss</option>
             <option value="admin">🛠 Admin</option>
             <option value="supervisor">👷 Supervisor</option>
           </select>
 
-          {/* Password with eye toggle */}
-          <div className="password-wrapper">
-            <input
-              type={showPass ? "text" : "password"}
-              placeholder="Enter password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="login-input"
-            />
-            <button
-              type="button"
-              className="eye-btn"
-              onClick={() => setShowPass(!showPass)}
-            >
-              {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
+          {/* Password with eye toggle (hidden for supervisor) */}
+          {role === "admin" && (
+            <div className="password-wrapper">
+              <input
+                type={showPass ? "text" : "password"}
+                placeholder="Enter password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="login-input"
+              />
+              <button
+                type="button"
+                className="eye-btn"
+                onClick={() => setShowPass(!showPass)}
+              >
+                {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          )}
 
           {error && <p className="error-text">{error}</p>}
 

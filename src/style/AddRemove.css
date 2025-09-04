@@ -447,3 +447,29 @@
 .items-table-container::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* --- Duplicate Field Indicators --- */
+.input-dup {
+  border: 2px solid #ff4444 !important;
+  background-color: #fff5f5 !important;
+  animation: shake 0.3s ease-in-out;
+}
+
+.dup-hint {
+  color: #ff4444;
+  font-size: 12px;
+  font-weight: bold;
+  margin-left: 8px;
+  animation: blink 1s infinite;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.5; }
+}

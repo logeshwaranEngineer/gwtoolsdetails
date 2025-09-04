@@ -4,7 +4,7 @@ import { getAllItems, saveItemToDB, deleteItemFromDB } from "../server/db";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import Select from "react-select";
 
-export default function AddRemove({ goBack }) {
+export default function AddRemove({ goBack, user }) {
   const defaultCategoriesList = [
     "FRC ORANGE PANT",
     "FRC ORANGE SHIRTS",
@@ -50,6 +50,9 @@ export default function AddRemove({ goBack }) {
         setItems(allItems);
 
         setCategories(buildCategories(allItems)); // ✅ clean + safe
+        
+        // Update template to include all unique fields from all items
+        updateTemplateWithAllFields(allItems);
       } catch (e) {
         console.error("Failed to load items", e);
         setItems([]);
@@ -82,6 +85,50 @@ export default function AddRemove({ goBack }) {
         ...items.map((i) => i.category).filter(Boolean),
       ])
     );
+
+  // Function to update template with all unique fields from all items
+  const updateTemplateWithAllFields = (items) => {
+    try {
+      // Get all unique field labels from all items
+      const allFieldLabels = new Set();
+      
+      items.forEach(item => {
+        if (Array.isArray(item.dynamicFields)) {
+          item.dynamicFields.forEach(field => {
+            if (field.label && field.label.trim()) {
+              allFieldLabels.add(field.label.trim());
+            }
+          });
+        }
+      });
+
+      // Convert to array and sort for consistent order
+      const sortedLabels = Array.from(allFieldLabels).sort();
+      
+      // Create comprehensive template
+      const comprehensiveTemplate = sortedLabels.map(label => ({
+        label: label,
+        value: ""
+      }));
+
+      // Only update if we have fields and the template is different
+      if (comprehensiveTemplate.length > 0) {
+        const currentTemplate = Array.isArray(templates?.[0]) ? templates[0] : [];
+        const currentLabels = currentTemplate.map(t => t.label).sort();
+        const newLabels = sortedLabels.sort();
+        
+        // Check if templates are different
+        if (JSON.stringify(currentLabels) !== JSON.stringify(newLabels)) {
+          const newTemplates = [comprehensiveTemplate];
+          setTemplates(newTemplates);
+          localStorage.setItem("templates", JSON.stringify(newTemplates));
+          console.log("Template updated with all fields:", sortedLabels);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating template:", error);
+    }
+  };
 
   const [specOptions, setSpecOptions] = useState(() => {
     try {
@@ -141,9 +188,27 @@ export default function AddRemove({ goBack }) {
     dynamicFields: [],
   });
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loginPassword, setLoginPassword] = useState("");
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  // Use global user role instead of internal login
+  const isAdmin = user === "admin";
+  const isSupervisor = user === "supervisor";
+  
+  // Check if navigated from Employee Management
+  const [contextMessage, setContextMessage] = useState("");
+  useEffect(() => {
+    const context = localStorage.getItem("addRemoveContext");
+    if (context) {
+      if (context === "issue") {
+        setContextMessage("📦 Issue Products - Use this page to manage inventory for employee issuance");
+      } else if (context === "return") {
+        setContextMessage("🔄 Return Products - Use this page to manage inventory for employee returns");
+      }
+      // Clear context after showing
+      localStorage.removeItem("addRemoveContext");
+      
+      // Clear message after 5 seconds
+      setTimeout(() => setContextMessage(""), 5000);
+    }
+  }, []);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templates, setTemplates] = useState(() => {
     try {
@@ -204,23 +269,117 @@ export default function AddRemove({ goBack }) {
     }),
   };
 
-  // === Duplicate Label Check Helpers ===
+  // === Enhanced Duplicate Label Check Helpers ===
   const normalizeLabel = (s) => (s || "").trim().toLowerCase();
+  
+  // Common spelling variations and similar words
+  const labelVariations = {
+    'quantity': ['qty', 'quanitity', 'quanity', 'quannity', 'quantiy', 'qantity', 'quantitiy'],
+    'quality': ['qualiy', 'qualty', 'qualitiy', 'qulaity'],
+    'material': ['materail', 'matrial', 'meterial', 'materal'],
+    'category': ['catagory', 'categry', 'catgory', 'categorey'],
+    'description': ['descriptn', 'descrption', 'discription', 'descripton'],
+    'specification': ['spec', 'specificatn', 'specfication', 'specifiction'],
+    'dimension': ['dimention', 'dimentions', 'dimesion'],
+    'weight': ['wieght', 'weght', 'wight'],
+    'height': ['hieght', 'heght', 'hight'],
+    'width': ['widht', 'wdth', 'widt'],
+    'length': ['lenght', 'lenth', 'legth'],
+    'diameter': ['diamter', 'diametr', 'diametre'],
+    'thickness': ['thikness', 'thicknes', 'thiknes'],
+    'color': ['colour', 'colr', 'clor'],
+    'size': ['sze', 'siz', 'sie'],
+    'grade': ['grd', 'graed', 'grae'],
+    'model': ['modl', 'modle', 'mdl'],
+    'brand': ['brnd', 'bran', 'bradn'],
+    'type': ['typ', 'tpe', 'tyep'],
+    'code': ['cod', 'cde', 'coode'],
+    'serial': ['srial', 'seril', 'serail'],
+    'number': ['no', 'num', 'numbr', 'numer'],
+    'date': ['dt', 'dte', 'dat'],
+    'price': ['pric', 'prce', 'prise'],
+    'cost': ['cst', 'coost', 'cot'],
+    'value': ['val', 'valu', 'vlue']
+  };
+
+  // Function to get all variations of a label
+  const getLabelVariations = (label) => {
+    const normalized = normalizeLabel(label);
+    const variations = new Set([normalized]);
+    
+    // Check if this label matches any known variations
+    for (const [standard, variants] of Object.entries(labelVariations)) {
+      if (normalized === standard || variants.includes(normalized)) {
+        variations.add(standard);
+        variants.forEach(v => variations.add(v));
+      }
+    }
+    
+    return variations;
+  };
+
+  // Enhanced duplicate detection
   const findDuplicateLabels = (list = []) => {
-    const counts = {};
+    const labelGroups = new Map(); // Maps normalized label to array of original labels
+    const duplicates = new Set();
+    
     list.forEach((f) => {
-      const k = normalizeLabel(f?.label);
-      if (!k) return;
-      counts[k] = (counts[k] || 0) + 1;
+      const originalLabel = (f?.label || "").trim();
+      if (!originalLabel) return;
+      
+      const variations = getLabelVariations(originalLabel);
+      let foundGroup = null;
+      
+      // Check if any variation matches existing groups
+      for (const variation of variations) {
+        if (labelGroups.has(variation)) {
+          foundGroup = variation;
+          break;
+        }
+      }
+      
+      if (foundGroup) {
+        // Add to existing group
+        labelGroups.get(foundGroup).push(originalLabel);
+        // Mark all labels in this group as duplicates
+        labelGroups.get(foundGroup).forEach(label => {
+          duplicates.add(normalizeLabel(label));
+        });
+      } else {
+        // Create new group with first variation as key
+        const firstVariation = Array.from(variations)[0];
+        labelGroups.set(firstVariation, [originalLabel]);
+      }
     });
-    return new Set(Object.keys(counts).filter((k) => counts[k] > 1));
+    
+    return duplicates;
+  };
+
+  // Function to check if a new label would be a duplicate
+  const wouldBeDuplicate = (newLabel, existingLabels) => {
+    if (!newLabel || !newLabel.trim()) return false;
+    
+    const newVariations = getLabelVariations(newLabel);
+    
+    return existingLabels.some(existingLabel => {
+      if (!existingLabel || !existingLabel.trim()) return false;
+      const existingVariations = getLabelVariations(existingLabel);
+      
+      // Check if any variation of new label matches any variation of existing label
+      for (const newVar of newVariations) {
+        for (const existingVar of existingVariations) {
+          if (newVar === existingVar) return true;
+        }
+      }
+      return false;
+    });
   };
   const activeTemplate = Array.isArray(templates?.[0]) ? templates[0] : [];
   const duplicateTemplateLabels = findDuplicateLabels(activeTemplate);
 
   // Lock background scroll when any modal is open
   useEffect(() => {
-    const anyOpen = showModal || showTemplateModal || showLoginModal;
+    const anyOpen = showModal || showTemplateModal;
     if (anyOpen) {
       const scrollY = window.scrollY;
       document.body.style.top = `-${scrollY}px`;
@@ -240,7 +399,7 @@ export default function AddRemove({ goBack }) {
       document.body.style.top = "";
       window.scrollTo(0, y);
     }
-  }, [showModal, showTemplateModal, showLoginModal]);
+  }, [showModal, showTemplateModal]);
 
   // const addTemplateLabel = () => setTemplateLabels([...templateLabels, ""]);
   // const removeTemplateLabel = (i) => setTemplateLabels(templateLabels.filter((_, idx) => idx !== i));
@@ -289,16 +448,12 @@ export default function AddRemove({ goBack }) {
 
     setCategories([...new Set(updatedItems.map((i) => i.category))]);
 
-    // Persist current labels as active template for next time
+    // Update template to include all fields from all items (including the new one)
     try {
-      const templateToSave = [
-        (Array.isArray(form.dynamicFields) ? form.dynamicFields : []).map(
-          (f) => ({ label: f?.label || "", value: "" })
-        ),
-      ];
-      setTemplates(templateToSave);
-      localStorage.setItem("templates", JSON.stringify(templateToSave));
-    } catch {}
+      updateTemplateWithAllFields(updatedItems);
+    } catch (error) {
+      console.error("Error updating template after save:", error);
+    }
 
     setShowModal(false);
     setForm({
@@ -345,6 +500,9 @@ export default function AddRemove({ goBack }) {
       await deleteItemFromDB(id);
       const updatedItems = await getAllItems();
       setItems(updatedItems);
+      
+      // Update template after deletion to reflect remaining fields
+      updateTemplateWithAllFields(updatedItems);
     } catch (err) {
       console.error("Delete failed:", err);
       alert("Failed to delete item. Check console for details.");
@@ -408,6 +566,24 @@ export default function AddRemove({ goBack }) {
 
   const handleDynamicFieldChange = (i, key, value) => {
     const base = Array.isArray(form.dynamicFields) ? form.dynamicFields : [];
+    
+    // If changing label, check for duplicates
+    if (key === "label" && value && value.trim()) {
+      const existingLabels = base
+        .map((f, idx) => idx !== i ? f.label : null) // Exclude current field
+        .filter(Boolean);
+      
+      if (wouldBeDuplicate(value.trim(), existingLabels)) {
+        // Find the conflicting label
+        const conflictingLabel = existingLabels.find(existing => 
+          wouldBeDuplicate(value.trim(), [existing])
+        );
+        
+        alert(`⚠️ Duplicate field detected!\n\n"${value.trim()}" is similar to existing field "${conflictingLabel}".\n\nPlease use a different name or remove the existing field first.`);
+        return; // Don't update the field
+      }
+    }
+    
     const updated = base.map((f, idx) =>
       idx === i ? { ...f, [key]: toTitleCase(value) } : f
     );
@@ -488,15 +664,7 @@ export default function AddRemove({ goBack }) {
     setShowModal(true);
   };
 
-  // Admin login
-  const handleLogin = () => {
-    if (loginPassword === "admin123") {
-      setIsLoggedIn(true);
-      setShowLoginModal(false);
-      setLoginPassword("");
-    } else alert("❌ Wrong password!");
-  };
-  const handleLogout = () => setIsLoggedIn(false);
+  // Filters helpers
   const resetFilters = () => {
     setSearchText("");
     setFilterCategory("");
@@ -578,26 +746,58 @@ export default function AddRemove({ goBack }) {
       <div className="header">
         <h2>📦 Manage Inventory - Add & Remove </h2>
         <div>
-          {!isLoggedIn ? (
-            <button
-              className="login-btn"
-              onClick={() => setShowLoginModal(true)}
-            >
-              🔐 Login
-            </button>
-          ) : (
-            <button className="logout-btn" onClick={handleLogout}>
-              🚪 Logout
-            </button>
-          )}
+          {/* Global login controls, nothing local here */}
         </div>
       </div>
-      <button className="add-btn" onClick={openAddModal}>
-        ➕ Add Item
-      </button>
-      <button className="add-btn" onClick={openTemplateModal}>
-        ➕ Add saved template
-      </button>
+      
+      {/* Context message from Employee Management */}
+      {contextMessage && (
+        <div style={{
+          background: '#e3f2fd',
+          border: '1px solid #2196f3',
+          borderRadius: '4px',
+          padding: '12px',
+          margin: '10px 0',
+          color: '#1976d2',
+          fontWeight: 'bold'
+        }}>
+          {contextMessage}
+        </div>
+      )}
+      
+      {/* Only admin can add items */}
+      {isAdmin && (
+        <>
+          <button className="add-btn" onClick={openAddModal}>
+            ➕ Add Item
+          </button>
+          <button className="add-btn" onClick={openTemplateModal}>
+            ➕ Add saved template
+          </button>
+          <button 
+            className="add-btn" 
+            onClick={() => updateTemplateWithAllFields(items)}
+            title="Refresh table columns to show all fields from all items"
+          >
+            🔄 Refresh Columns
+          </button>
+        </>
+      )}
+      
+      {/* Show message for supervisor */}
+      {isSupervisor && (
+        <div style={{
+          background: '#fff3cd',
+          border: '1px solid #ffeaa7',
+          borderRadius: '4px',
+          padding: '10px',
+          margin: '10px 0',
+          color: '#856404',
+          textAlign: 'center'
+        }}>
+          📋 Supervisor View - You can view inventory but cannot add/edit/delete items
+        </div>
+      )}
       <div className="filters">
         {/* <div className="search-wrapper">
           <input
@@ -689,7 +889,7 @@ export default function AddRemove({ goBack }) {
               </div>
               <div className="actions">
                 <button className="btn-edit" onClick={() => openEditModal(item)}>Edit</button>
-                {isLoggedIn && (
+                {isAdmin && (
                   <button className="btn-delete" onClick={() => handleDelete(item.id)}>
                     Delete
                   </button>
@@ -794,7 +994,14 @@ export default function AddRemove({ goBack }) {
                   scrollBehavior: "smooth",
                 }}
               >
-                {form.dynamicFields.map((f, i) => (
+                {form.dynamicFields.map((f, i) => {
+                  // Check if this field is a duplicate
+                  const otherLabels = form.dynamicFields
+                    .map((field, idx) => idx !== i ? field.label : null)
+                    .filter(Boolean);
+                  const isDuplicate = f.label && wouldBeDuplicate(f.label, otherLabels);
+                  
+                  return (
                   <div key={i} className="spec-field">
                     <input
                       type="text"
@@ -804,7 +1011,9 @@ export default function AddRemove({ goBack }) {
                       onChange={(e) =>
                         handleDynamicFieldChange(i, "label", e.target.value)
                       }
+                      className={isDuplicate ? "input-dup" : ""}
                     />
+                    {isDuplicate && <span className="dup-hint">Duplicate!</span>}
 
                     {/* Smart editable dropdowns */}
                     {[
@@ -840,7 +1049,8 @@ export default function AddRemove({ goBack }) {
                       🗑️
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               {/* <button type="button" onClick={addDynamicField}>➕ Add Specific</button> */}
 
@@ -899,7 +1109,34 @@ export default function AddRemove({ goBack }) {
             <div className="modal-actions">
               <button
                 className={editingItem ? "btn-update" : ""}
-                onClick={saveItem}
+                onClick={() => {
+                  // Check for duplicates before saving
+                  const labels = form.dynamicFields.map(f => f.label).filter(Boolean);
+                  const hasDuplicates = labels.some((label, index) => 
+                    wouldBeDuplicate(label, labels.filter((_, i) => i !== index))
+                  );
+                  
+                  if (hasDuplicates) {
+                    alert("⚠️ Cannot save item with duplicate fields!\n\nPlease remove or rename duplicate fields before saving.");
+                    return;
+                  }
+                  
+                  saveItem();
+                }}
+                disabled={form.dynamicFields.some((f, i) => {
+                  const otherLabels = form.dynamicFields
+                    .map((field, idx) => idx !== i ? field.label : null)
+                    .filter(Boolean);
+                  return f.label && wouldBeDuplicate(f.label, otherLabels);
+                })}
+                style={{
+                  opacity: form.dynamicFields.some((f, i) => {
+                    const otherLabels = form.dynamicFields
+                      .map((field, idx) => idx !== i ? field.label : null)
+                      .filter(Boolean);
+                    return f.label && wouldBeDuplicate(f.label, otherLabels);
+                  }) ? 0.5 : 1
+                }}
               >
                 {editingItem ? "🔴 Update" : "✅ Save"}
               </button>
@@ -960,16 +1197,32 @@ export default function AddRemove({ goBack }) {
                               type="text"
                               placeholder="Label"
                               value={f.label || ""}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                const newValue = e.target.value;
+                                if (newValue && newValue.trim()) {
+                                  // Check for duplicates in template
+                                  const existingLabels = (templates[0] || [])
+                                    .map((field, idx) => idx !== i ? field.label : null)
+                                    .filter(Boolean);
+                                  
+                                  if (wouldBeDuplicate(newValue.trim(), existingLabels)) {
+                                    const conflictingLabel = existingLabels.find(existing => 
+                                      wouldBeDuplicate(newValue.trim(), [existing])
+                                    );
+                                    alert(`⚠️ Duplicate template field detected!\n\n"${newValue.trim()}" is similar to existing field "${conflictingLabel}".\n\nPlease use a different name or remove the existing field first.`);
+                                    return;
+                                  }
+                                }
+                                
                                 setTemplates((prev) => {
                                   const base = [...prev[0]];
                                   base[i] = {
                                     ...base[i],
-                                    label: toTitleCase(e.target.value),
+                                    label: toTitleCase(newValue),
                                   };
                                   return [base];
-                                })
-                              }
+                                });
+                              }}
                               className={
                                 duplicateTemplateLabels.has(
                                   normalizeLabel(f.label)
@@ -1035,7 +1288,6 @@ export default function AddRemove({ goBack }) {
             <col className="col-image" />
             <col className="col-category" />
             <col className="col-names" />
-            {/* dynamic template columns */}
             {(templates[0] || []).map((_, i) => (
               <col className={`col-dyn col-dyn-${i}`} key={i} />
             ))}
@@ -1050,14 +1302,11 @@ export default function AddRemove({ goBack }) {
               <th className="col-image">Image</th>
               <th className="col-category">Category</th>
               {/* <th className="col-names">Names</th> */}
-
-              {/* Dynamic Columns from Template */}
               {(templates[0] || []).map((f, i) => (
                 <th key={i} className={`col-dyn col-dyn-${i}`}>
                   {f.label || `Field ${i + 1}`}
                 </th>
               ))}
-
               <th className="col-date">Date</th>
               <th className="col-time">Time</th>
               <th className="col-actions">Actions</th>
@@ -1084,8 +1333,8 @@ export default function AddRemove({ goBack }) {
                         src={item.image}
                         alt={item.category}
                         style={{
-                          width: "56px",
-                          height: "56px",
+                          width: "100px",
+                          height: "70px",
                           objectFit: "cover",
                           display: "block",
                         }}
@@ -1098,8 +1347,6 @@ export default function AddRemove({ goBack }) {
                   {/* <td className="col-names">
               {item.names?.length > 0 ? item.names.join(", ") : "-"}
             </td> */}
-
-                  {/* dynamic fields */}
                   {(templates[0] || []).map((tpl, i) => {
                     const value =
                       (item.dynamicFields || []).find(
@@ -1124,19 +1371,26 @@ export default function AddRemove({ goBack }) {
                       : "-"}
                   </td>
                   <td className="col-actions">
-                    <button
-                      className="btn-edit"
-                      onClick={() => openEditModal(item)}
-                    >
-                      Edit
-                    </button>
-                    {isLoggedIn && (
+                    {isAdmin && (
+                      <button
+                        className="btn-edit"
+                        onClick={() => openEditModal(item)}
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {isAdmin && (
                       <button
                         className="btn-delete"
                         onClick={() => handleDelete(item.id)}
                       >
                         Delete
                       </button>
+                    )}
+                    {!isAdmin && !isSupervisor && (
+                      <span style={{ color: '#999', fontStyle: 'italic' }}>
+                        View Only
+                      </span>
                     )}
                   </td>
                 </tr>
@@ -1146,27 +1400,6 @@ export default function AddRemove({ goBack }) {
         </table>
       </div>
 
-      {/* Login Modal */}
-      {showLoginModal && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h3>🔐 Admin Login</h3>
-            <input
-              type="password"
-              placeholder="Enter password"
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleLogin()}
-            />
-            <div className="modal-actions">
-              <button onClick={handleLogin}>✅ Login</button>
-              <button onClick={() => setShowLoginModal(false)}>
-                ❌ Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

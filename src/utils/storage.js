@@ -1,9 +1,8 @@
 import { defaultEmployees } from "../data/employees";
 
 const defaultUsers = {
-  boss: "boss123",
   admin: "admin123",
-  supervisor: "super123",
+  supervisor: "", // supervisor has no password
 };
 const EMPLOYEE_KEY = "employees";
 // Load users from localStorage or default
@@ -15,7 +14,11 @@ export function getUsers() {
 // Validate login
 export function validateUser(role, password) {
   const users = getUsers();
-  return users[role] === password;
+  // supervisor: no password required
+  if (role === "supervisor") return true;
+  // admin: must match stored password
+  if (role === "admin") return users[role] === password;
+  return false;
 }
 
 // Change password

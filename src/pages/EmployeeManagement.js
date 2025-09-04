@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import "../style/Employee.css";
 import { getEmployees } from "../utils/storage";
 import { defaultEmployees } from "../data/employees";
-import { initialStock } from "../data/stock";
+import { getAllItems, saveItemToDB } from "../server/db";
 import Select from "react-select";
 import employeeService from "../services/employeeService";
 import stockService from "../services/stockService";
@@ -23,7 +23,8 @@ const superiors = [
   "Mr. Wong"
 ];
 
-export default function EmployeeManagement({ goBack }) {
+export default function EmployeeManagement({ goBack, onNavigateToAddRemove, user }) {
+  const [activeTab, setActiveTab] = useState("issue"); // "issue" | "issued" | "employee-history" | "site-history"
   const [mode, setMode] = useState("employee"); // "employee" | "site"
   const [employees, setEmployees] = useState([]);
   const [employee, setEmployee] = useState(null);
@@ -37,12 +38,17 @@ export default function EmployeeManagement({ goBack }) {
   const [proof, setProof] = useState(null);
 
   const [records, setRecords] = useState([]);
-  const [currentStock, setCurrentStock] = useState([]);
+  const [availableItems, setAvailableItems] = useState([]);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [returnQuantity, setReturnQuantity] = useState("");
 
-  // === Load employees and stock ===
+  // Filter states for tabs
+  const [filterEmployee, setFilterEmployee] = useState("");
+  const [filterSite, setFilterSite] = useState("");
+  const [filterItem, setFilterItem] = useState("");
+
+  // === Load employees and items from AddRemove ===
   useEffect(() => {
     const list = getEmployees();
     if (list && list.length > 0) {
@@ -51,13 +57,47 @@ export default function EmployeeManagement({ goBack }) {
       setEmployees(defaultEmployees);
     }
     
-    // Load current stock
-    const stock = stockService.getCurrentStock();
-    setCurrentStock(stock);
+    // Load items from AddRemove database
+    loadAvailableItems();
     
     const savedRecords = localStorage.getItem("employee_records");
     if (savedRecords) setRecords(JSON.parse(savedRecords));
   }, []);
+
+  // Load items from AddRemove database
+  const loadAvailableItems = async () => {
+    try {
+      const items = await getAllItems();
+      // Transform AddRemove items to include quantity info from dynamic fields
+      const transformedItems = items.map(item => {
+        const quantity = getQuantityFromDynamicFields(item.dynamicFields);
+        return {
+          id: item.id,
+          category: item.category,
+          names: item.names || [],
+          image: item.image,
+          dynamicFields: item.dynamicFields || [],
+          // Extract quantity from dynamic fields if available
+          availableQuantity: quantity,
+          hasQuantity: quantity !== null,
+          originalItem: item
+        };
+      });
+      setAvailableItems(transformedItems);
+    } catch (error) {
+      console.error("Error loading items:", error);
+      setAvailableItems([]);
+    }
+  };
+
+  // Helper function to extract quantity from dynamic fields
+  const getQuantityFromDynamicFields = (dynamicFields) => {
+    if (!Array.isArray(dynamicFields)) return null;
+    const quantityField = dynamicFields.find(field => 
+      field.label && field.label.toLowerCase().includes('quantity')
+    );
+    return quantityField ? parseInt(quantityField.value) || 0 : null;
+  };
 
   // Save records to localStorage whenever updated
   useEffect(() => {
@@ -74,14 +114,14 @@ export default function EmployeeManagement({ goBack }) {
     }
   };
 
-  const handleAddRecord = () => {
+  const handleAddRecord = async () => {
     if (mode === "employee") {
-      if (!employee || !selectedItem || !selectedVariant || !quantity || !proof) {
+      if (!employee || !selectedItem || !quantity || !proof) {
         alert("⚠ Please fill all fields for employee!");
         return;
       }
     } else {
-      if (!selectedSite || !selectedSuperior || !selectedItem || !selectedVariant || !quantity || !proof) {
+      if (!selectedSite || !selectedSuperior || !selectedItem || !quantity || !proof) {
         alert("⚠ Please fill all fields for site issue!");
         return;
       }
@@ -89,67 +129,79 @@ export default function EmployeeManagement({ goBack }) {
 
     const requestedQuantity = parseInt(quantity);
     
-    // Find the variant code from the selected variant label
-    const selectedVariantObj = selectedItem.variants.find(v => v.label === selectedVariant);
-    if (!selectedVariantObj) {
-      alert("⚠ Selected variant not found!");
-      return;
+    // Check if item has quantity tracking
+    if (!selectedItem.hasQuantity) {
+      const proceed = window.confirm(
+        `⚠ Warning: This item doesn't have quantity tracking!\n\n` +
+        `Item: ${selectedItem.category} - ${selectedItem.names.join(', ')}\n` +
+        `Requested: ${requestedQuantity}\n\n` +
+        `The system cannot track inventory for this item. Do you want to proceed anyway?`
+      );
+      if (!proceed) return;
+    } else {
+      // Check if requested quantity is available (only if quantity tracking exists)
+      if (requestedQuantity > selectedItem.availableQuantity) {
+        alert(`⚠ Insufficient quantity!\nAvailable: ${selectedItem.availableQuantity}\nRequested: ${requestedQuantity}`);
+        return;
+      }
     }
 
-    // Check stock availability
-    const stockCheck = stockService.checkStockAvailability(
-      selectedItem.id, 
-      selectedVariantObj.code, 
-      requestedQuantity
-    );
+    try {
+      // Reduce quantity in AddRemove item (only if quantity tracking exists)
+      if (selectedItem.hasQuantity) {
+        const updatedItem = { ...selectedItem.originalItem };
+        const quantityFieldIndex = updatedItem.dynamicFields.findIndex(field => 
+          field.label && field.label.toLowerCase().includes('quantity')
+        );
+        
+        if (quantityFieldIndex !== -1) {
+          const currentQty = parseInt(updatedItem.dynamicFields[quantityFieldIndex].value) || 0;
+          const newQty = currentQty - requestedQuantity;
+          updatedItem.dynamicFields[quantityFieldIndex].value = newQty.toString();
+          
+          // Save updated item back to AddRemove database
+          await saveItemToDB(updatedItem);
+        }
+      }
 
-    if (!stockCheck.available) {
-      alert(`⚠ Insufficient stock!\nAvailable: ${stockCheck.currentBalance}\nRequested: ${requestedQuantity}`);
-      return;
+      const newRecord = {
+        type: mode,
+        employee: mode === "employee" ? employee.label : null,
+        site: mode === "site" ? selectedSite.label : null,
+        superior: mode === "site" ? selectedSuperior.label : null,
+        item: `${selectedItem.category} - ${selectedItem.names.join(', ')}`,
+        quantity: requestedQuantity,
+        proof: proof.preview,
+        date: new Date().toLocaleString(),
+        // Store item details for future operations
+        itemId: selectedItem.id,
+        originalItem: selectedItem.originalItem,
+      };
+
+      setRecords([...records, newRecord]);
+
+      // Reload available items to reflect updated quantities
+      await loadAvailableItems();
+
+      // Show appropriate success message based on quantity tracking
+      if (selectedItem.hasQuantity) {
+        alert(`✅ Record saved successfully!\nQuantity reduced from ${selectedItem.availableQuantity} to ${selectedItem.availableQuantity - requestedQuantity}`);
+      } else {
+        alert(`✅ Record saved successfully!\n⚠ Note: This item doesn't have quantity tracking, so inventory wasn't updated.`);
+      }
+
+      // Clear form
+      setEmployee(null);
+      setSelectedSite(null);
+      setSelectedSuperior(null);
+      setSelectedItem(null);
+      setSelectedVariant("");
+      setQuantity("");
+      setProof(null);
+    } catch (error) {
+      console.error("Error saving record:", error);
+      alert("❌ Error saving record. Please try again.");
     }
-
-    // Reduce stock
-    const stockResult = stockService.reduceStock(
-      selectedItem.id, 
-      selectedVariantObj.code, 
-      requestedQuantity
-    );
-
-    if (!stockResult.success) {
-      alert(`⚠ Stock Error: ${stockResult.error}`);
-      return;
-    }
-
-    const newRecord = {
-      type: mode,
-      employee: mode === "employee" ? employee.label : null,
-      site: mode === "site" ? selectedSite.label : null,
-      superior: mode === "site" ? selectedSuperior.label : null,
-      item: `${selectedItem.name} (${selectedVariant})`,
-      quantity: requestedQuantity,
-      proof: proof.preview,
-      date: new Date().toLocaleString(),
-      // Store item details for future stock operations
-      itemId: selectedItem.id,
-      variantCode: selectedVariantObj.code,
-    };
-
-    setRecords([...records, newRecord]);
-
-    // Update current stock display
-    const updatedStock = stockService.getCurrentStock();
-    setCurrentStock(updatedStock);
-
-    alert(`✅ Record saved successfully!\n${stockResult.message}\nNew Balance: ${stockResult.newBalance}`);
-
-    // Clear form
-    setEmployee(null);
-    setSelectedSite(null);
-    setSelectedSuperior(null);
-    setSelectedItem(null);
-    setSelectedVariant("");
-    setQuantity("");
-    setProof(null);
   };
 
   // Handle return items (add back to stock)
@@ -160,7 +212,7 @@ export default function EmployeeManagement({ goBack }) {
   };
 
   // Process return/add stock
-  const processReturn = () => {
+  const processReturn = async () => {
     if (!selectedRecord || !returnQuantity) {
       alert("⚠ Please enter return quantity!");
       return;
@@ -172,106 +224,239 @@ export default function EmployeeManagement({ goBack }) {
       return;
     }
 
-    let stockResult;
-    
-    // If record has itemId and variantCode (new format)
-    if (selectedRecord.itemId && selectedRecord.variantCode) {
-      stockResult = stockService.increaseStock(
-        selectedRecord.itemId,
-        selectedRecord.variantCode,
-        returnQty
-      );
-    } else {
-      // For old records, parse the item string
-      stockResult = stockService.processStockChangeFromString(
-        selectedRecord.item,
-        returnQty,
-        'increase'
-      );
-    }
-
-    if (!stockResult.success) {
-      alert(`⚠ Stock Error: ${stockResult.error}`);
-      return;
-    }
-
-    // Update the record quantity
-    const updatedRecords = records.map(rec => {
-      if (rec === selectedRecord) {
-        return {
-          ...rec,
-          quantity: rec.quantity - returnQty,
-          returnHistory: [
-            ...(rec.returnHistory || []),
-            {
-              returnedQuantity: returnQty,
-              returnDate: new Date().toLocaleString(),
-              remainingQuantity: rec.quantity - returnQty
-            }
-          ]
-        };
+    try {
+      // Find the item in AddRemove database and increase quantity (only if it has quantity tracking)
+      let quantityUpdated = false;
+      if (selectedRecord.itemId && selectedRecord.originalItem) {
+        const updatedItem = { ...selectedRecord.originalItem };
+        const quantityFieldIndex = updatedItem.dynamicFields.findIndex(field => 
+          field.label && field.label.toLowerCase().includes('quantity')
+        );
+        
+        if (quantityFieldIndex !== -1) {
+          const currentQty = parseInt(updatedItem.dynamicFields[quantityFieldIndex].value) || 0;
+          const newQty = currentQty + returnQty;
+          updatedItem.dynamicFields[quantityFieldIndex].value = newQty.toString();
+          
+          // Save updated item back to AddRemove database
+          await saveItemToDB(updatedItem);
+          quantityUpdated = true;
+        }
       }
-      return rec;
-    }).filter(rec => rec.quantity > 0); // Remove records with 0 quantity
 
-    setRecords(updatedRecords);
+      // Update the record quantity
+      const updatedRecords = records.map(rec => {
+        if (rec === selectedRecord) {
+          return {
+            ...rec,
+            quantity: rec.quantity - returnQty,
+            returnHistory: [
+              ...(rec.returnHistory || []),
+              {
+                returnedQuantity: returnQty,
+                returnDate: new Date().toLocaleString(),
+                remainingQuantity: rec.quantity - returnQty
+              }
+            ]
+          };
+        }
+        return rec;
+      }).filter(rec => rec.quantity > 0); // Remove records with 0 quantity
 
-    // Update current stock display
-    const updatedStock = stockService.getCurrentStock();
-    setCurrentStock(updatedStock);
+      setRecords(updatedRecords);
 
-    alert(`✅ Return processed successfully!\n${stockResult.message}\nNew Balance: ${stockResult.newBalance}`);
+      // Reload available items to reflect updated quantities
+      await loadAvailableItems();
 
-    // Close modal
-    setShowReturnModal(false);
-    setSelectedRecord(null);
-    setReturnQuantity("");
+      // Show appropriate success message based on whether quantity was updated
+      if (quantityUpdated) {
+        alert(`✅ Return processed successfully!\nQuantity ${returnQty} returned to inventory`);
+      } else {
+        alert(`✅ Return processed successfully!\n⚠ Note: This item doesn't have quantity tracking, so inventory wasn't updated.`);
+      }
+
+      // Close modal
+      setShowReturnModal(false);
+      setSelectedRecord(null);
+      setReturnQuantity("");
+    } catch (error) {
+      console.error("Error processing return:", error);
+      alert("❌ Error processing return. Please try again.");
+    }
   };
 
-  // Add new stock (for restocking)
-  const handleAddStock = () => {
-    const itemName = prompt("Enter item name:");
-    if (!itemName) return;
+  // Refresh items from AddRemove
+  const handleRefreshItems = async () => {
+    await loadAvailableItems();
+    alert("✅ Items refreshed from inventory!");
+  };
 
-    const variantLabel = prompt("Enter variant (e.g., Size M, Standard):");
-    if (!variantLabel) return;
+  // Helper functions for filtering and data processing
+  const getUniqueEmployees = () => {
+    const employeeRecords = records.filter(rec => rec.type === "employee");
+    return [...new Set(employeeRecords.map(rec => rec.employee))].filter(Boolean);
+  };
 
-    const quantity = prompt("Enter quantity to add:");
-    if (!quantity || isNaN(quantity) || parseInt(quantity) <= 0) {
-      alert("⚠ Please enter a valid quantity!");
-      return;
+  const getUniqueSites = () => {
+    const siteRecords = records.filter(rec => rec.type === "site");
+    return [...new Set(siteRecords.map(rec => rec.site))].filter(Boolean);
+  };
+
+  const getUniqueItems = () => {
+    return [...new Set(records.map(rec => rec.item))].filter(Boolean);
+  };
+
+  const getFilteredRecords = () => {
+    let filtered = [...records];
+
+    if (activeTab === "employee-history" && filterEmployee) {
+      filtered = filtered.filter(rec => 
+        rec.type === "employee" && rec.employee === filterEmployee
+      );
     }
 
-    const stockResult = stockService.processStockChangeFromString(
-      `${itemName} (${variantLabel})`,
-      parseInt(quantity),
-      'increase'
-    );
-
-    if (!stockResult.success) {
-      alert(`⚠ Stock Error: ${stockResult.error}`);
-      return;
+    if (activeTab === "site-history" && filterSite) {
+      filtered = filtered.filter(rec => 
+        rec.type === "site" && rec.site === filterSite
+      );
     }
 
-    // Update current stock display
-    const updatedStock = stockService.getCurrentStock();
-    setCurrentStock(updatedStock);
+    if (filterItem) {
+      filtered = filtered.filter(rec => 
+        rec.item.toLowerCase().includes(filterItem.toLowerCase())
+      );
+    }
 
-    alert(`✅ Stock added successfully!\n${stockResult.message}\nNew Balance: ${stockResult.newBalance}`);
+    return filtered;
+  };
+
+  // Reset filters when switching tabs
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    setFilterEmployee("");
+    setFilterSite("");
+    setFilterItem("");
   };
 
   return (
     <div className="page-container">
       <h2>👥 Employee / Site Management</h2>
 
-      {/* Toggle Mode */}
-      <div className="form-group">
-        <label>🔀 Choose Mode</label>
-        <select value={mode} onChange={(e) => setMode(e.target.value)}>
-          <option value="employee">Employee Issue</option>
-          <option value="site">Site Issue</option>
-        </select>
+      {/* Tab Navigation */}
+      <div style={{
+        display: 'flex',
+        borderBottom: '2px solid #ddd',
+        marginBottom: '20px',
+        gap: '0'
+      }}>
+        <button
+          onClick={() => handleTabChange("issue")}
+          style={{
+            padding: '12px 20px',
+            border: 'none',
+            background: activeTab === "issue" ? '#007bff' : '#f8f9fa',
+            color: activeTab === "issue" ? 'white' : '#333',
+            cursor: 'pointer',
+            borderRadius: '8px 8px 0 0',
+            fontSize: '14px',
+            fontWeight: activeTab === "issue" ? 'bold' : 'normal',
+            borderBottom: activeTab === "issue" ? '3px solid #007bff' : '3px solid transparent'
+          }}
+        >
+          📝 Issue Items
+        </button>
+        <button
+          onClick={() => handleTabChange("issued")}
+          style={{
+            padding: '12px 20px',
+            border: 'none',
+            background: activeTab === "issued" ? '#007bff' : '#f8f9fa',
+            color: activeTab === "issued" ? 'white' : '#333',
+            cursor: 'pointer',
+            borderRadius: '8px 8px 0 0',
+            fontSize: '14px',
+            fontWeight: activeTab === "issued" ? 'bold' : 'normal',
+            borderBottom: activeTab === "issued" ? '3px solid #007bff' : '3px solid transparent'
+          }}
+        >
+          📋 All Issued Items ({records.length})
+        </button>
+        <button
+          onClick={() => handleTabChange("employee-history")}
+          style={{
+            padding: '12px 20px',
+            border: 'none',
+            background: activeTab === "employee-history" ? '#007bff' : '#f8f9fa',
+            color: activeTab === "employee-history" ? 'white' : '#333',
+            cursor: 'pointer',
+            borderRadius: '8px 8px 0 0',
+            fontSize: '14px',
+            fontWeight: activeTab === "employee-history" ? 'bold' : 'normal',
+            borderBottom: activeTab === "employee-history" ? '3px solid #007bff' : '3px solid transparent'
+          }}
+        >
+          👷 Employee History ({getUniqueEmployees().length})
+        </button>
+        <button
+          onClick={() => handleTabChange("site-history")}
+          style={{
+            padding: '12px 20px',
+            border: 'none',
+            background: activeTab === "site-history" ? '#007bff' : '#f8f9fa',
+            color: activeTab === "site-history" ? 'white' : '#333',
+            cursor: 'pointer',
+            borderRadius: '8px 8px 0 0',
+            fontSize: '14px',
+            fontWeight: activeTab === "site-history" ? 'bold' : 'normal',
+            borderBottom: activeTab === "site-history" ? '3px solid #007bff' : '3px solid transparent'
+          }}
+        >
+          🏗️ Site History ({getUniqueSites().length})
+        </button>
       </div>
+
+      {/* Info about quantity tracking - only show on issue tab */}
+      {activeTab === "issue" && (
+        <div style={{
+          background: '#e8f4fd',
+          border: '1px solid #bee5eb',
+          borderRadius: '4px',
+          padding: '10px',
+          marginBottom: '15px',
+          fontSize: '14px'
+        }}>
+          <strong>💡 Quantity Tracking Info:</strong>
+          <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+            <li>Items with quantity tracking will show available stock and update inventory automatically</li>
+            <li>Items without quantity tracking will show "No Qty Tracking" - you can still issue them but inventory won't be updated</li>
+            <li>To add quantity tracking: Go to AddRemove → Edit item → Add a field with "Quantity" in the label</li>
+          </ul>
+        </div>
+      )}
+
+      {/* Issue Items Tab */}
+      {activeTab === "issue" && (
+        <>
+          {/* Toggle Mode */}
+          <div className="form-group">
+            <label>🔀 Choose Mode</label>
+            <select 
+              value={mode} 
+              onChange={(e) => setMode(e.target.value)}
+              style={{
+                minHeight: '45px',
+                fontSize: '16px',
+                padding: '10px',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="employee">Employee Issue</option>
+              <option value="site">Site Issue</option>
+            </select>
+          </div>
 
       {/* Employee Mode */}
       {mode === "employee" && (
@@ -283,6 +468,24 @@ export default function EmployeeManagement({ goBack }) {
             onChange={(option) => setEmployee(option)}
             placeholder="Search & select employee..."
             isSearchable
+            menuPosition="fixed"
+            menuPortalTarget={document.body}
+            styles={{
+              control: (provided) => ({
+                ...provided,
+                minHeight: '45px',
+                fontSize: '16px'
+              }),
+              option: (provided) => ({
+                ...provided,
+                fontSize: '16px',
+                padding: '10px'
+              }),
+              menuPortal: (provided) => ({
+                ...provided,
+                zIndex: 9999
+              })
+            }}
           />
         </div>
       )}
@@ -298,6 +501,24 @@ export default function EmployeeManagement({ goBack }) {
               onChange={(opt) => setSelectedSite(opt)}
               placeholder="Select site..."
               isSearchable
+              menuPosition="fixed"
+              menuPortalTarget={document.body}
+              styles={{
+                control: (provided) => ({
+                  ...provided,
+                  minHeight: '45px',
+                  fontSize: '16px'
+                }),
+                option: (provided) => ({
+                  ...provided,
+                  fontSize: '16px',
+                  padding: '10px'
+                }),
+                menuPortal: (provided) => ({
+                  ...provided,
+                  zIndex: 9999
+                })
+              }}
             />
           </div>
 
@@ -309,6 +530,24 @@ export default function EmployeeManagement({ goBack }) {
               onChange={(opt) => setSelectedSuperior(opt)}
               placeholder="Select superior..."
               isSearchable
+              menuPosition="fixed"
+              menuPortalTarget={document.body}
+              styles={{
+                control: (provided) => ({
+                  ...provided,
+                  minHeight: '45px',
+                  fontSize: '16px'
+                }),
+                option: (provided) => ({
+                  ...provided,
+                  fontSize: '16px',
+                  padding: '10px'
+                }),
+                menuPortal: (provided) => ({
+                  ...provided,
+                  zIndex: 9999
+                })
+              }}
             />
           </div>
         </>
@@ -318,40 +557,74 @@ export default function EmployeeManagement({ goBack }) {
       <div className="form-group">
         <label>📦 Item Taken</label>
         <Select
-          options={currentStock.map((it) => ({
-            value: it.id,
-            label: `${it.category} → ${it.name}`,
+          options={availableItems.map((item) => ({
+            value: item.id,
+            label: `${item.category} → ${item.names.join(', ')} ${item.hasQuantity ? `(Qty: ${item.availableQuantity})` : '(No Qty Tracking)'}`,
+            item: item
           }))}
           value={
             selectedItem
-              ? { value: selectedItem.id, label: `${selectedItem.category} → ${selectedItem.name}` }
+              ? { 
+                  value: selectedItem.id, 
+                  label: `${selectedItem.category} → ${selectedItem.names.join(', ')} ${selectedItem.hasQuantity ? `(Qty: ${selectedItem.availableQuantity})` : '(No Qty Tracking)'}`,
+                  item: selectedItem
+                }
               : null
           }
           onChange={(option) => {
-            const item = currentStock.find((it) => it.id === option.value);
-            setSelectedItem(item);
-            setSelectedVariant("");
+            setSelectedItem(option.item);
           }}
           placeholder="Search & select item..."
           isSearchable
+          menuPosition="fixed"
+          menuPortalTarget={document.body}
+          styles={{
+            control: (provided) => ({
+              ...provided,
+              minHeight: '45px',
+              fontSize: '16px'
+            }),
+            option: (provided) => ({
+              ...provided,
+              fontSize: '16px',
+              padding: '10px'
+            }),
+            menuPortal: (provided) => ({
+              ...provided,
+              zIndex: 9999
+            })
+          }}
         />
       </div>
 
-      {/* Variant */}
+      {/* Show item details */}
       {selectedItem && (
         <div className="form-group">
-          <label>🔢 Variant</label>
-          <select
-            value={selectedVariant}
-            onChange={(e) => setSelectedVariant(e.target.value)}
-          >
-            <option value="">-- Select Variant --</option>
-            {selectedItem.variants.map((v) => (
-              <option key={v.code} value={v.label}>
-                {v.label} (Balance: {v.balance})
-              </option>
-            ))}
-          </select>
+          <label>📋 Item Details</label>
+          <div style={{ 
+            background: '#f5f5f5', 
+            padding: '10px', 
+            borderRadius: '4px',
+            fontSize: '14px'
+          }}>
+            <p><strong>Category:</strong> {selectedItem.category}</p>
+            <p><strong>Names:</strong> {selectedItem.names.join(', ')}</p>
+            <p><strong>Available Quantity:</strong> {
+              selectedItem.hasQuantity 
+                ? selectedItem.availableQuantity 
+                : <span style={{color: '#ff6b35'}}>⚠ No quantity tracking</span>
+            }</p>
+            {selectedItem.dynamicFields.length > 0 && (
+              <div>
+                <strong>Specifications:</strong>
+                <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                  {selectedItem.dynamicFields.map((field, index) => (
+                    <li key={index}>{field.label}: {field.value}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -363,7 +636,26 @@ export default function EmployeeManagement({ goBack }) {
           value={quantity}
           placeholder="Enter quantity"
           onChange={(e) => setQuantity(e.target.value)}
+          min="1"
+          max={selectedItem && selectedItem.hasQuantity ? selectedItem.availableQuantity : ""}
+          style={{
+            minHeight: '45px',
+            fontSize: '16px',
+            padding: '10px',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}
         />
+        {selectedItem && (
+          <small style={{ color: '#666', fontSize: '14px' }}>
+            {selectedItem.hasQuantity 
+              ? `Maximum available: ${selectedItem.availableQuantity}`
+              : '⚠ This item has no quantity tracking - inventory won\'t be updated'
+            }
+          </small>
+        )}
       </div>
 
       {/* Proof */}
@@ -381,56 +673,344 @@ export default function EmployeeManagement({ goBack }) {
         <button className="issue-btn" onClick={handleAddRecord}>
           ✅ Save Record
         </button>
-        <button className="add-stock-btn" onClick={handleAddStock}>
-          📦 Add Stock
+        <button className="add-stock-btn" onClick={handleRefreshItems}>
+          🔄 Refresh Items
         </button>
+        {/* Only show AddRemove button for admin */}
+        {/* {onNavigateToAddRemove && user === "admin" && (
+          <button className="nav-btn" onClick={() => onNavigateToAddRemove('issue')}>
+            📦 Manage Inventory (AddRemove)
+          </button>
+        )} */}
       </div>
+      
+          {/* Show message for supervisor */}
+          {user === "supervisor" && (
+            <div style={{
+              background: '#e8f5e8',
+              border: '1px solid #4caf50',
+              borderRadius: '4px',
+              padding: '10px',
+              margin: '10px 0',
+              color: '#2e7d32',
+              textAlign: 'center'
+            }}>
+              👷 Supervisor Mode - You can issue products to employees and record transactions
+            </div>
+          )}
+        </>
+      )}
 
-      {/* Records */}
-      <h3>📜 Issuance Records</h3>
-      {records.length === 0 ? (
-        <p>No records yet.</p>
-      ) : (
-        <table className="issue-table">
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th>Employee / Site</th>
-              <th>Superior</th>
-              <th>Item</th>
-              <th>Qty</th>
-              <th>Proof</th>
-              <th>Date</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((rec, index) => (
-              <tr key={index}>
-                <td>{rec.type}</td>
-                <td>{rec.type === "employee" ? rec.employee : rec.site}</td>
-                <td>{rec.type === "site" ? rec.superior : "-"}</td>
-                <td>{rec.item}</td>
-                <td>{rec.quantity}</td>
-                <td>
-                  {rec.proof && (
-                    <img src={rec.proof} alt="Proof" className="proof-thumbnail" />
+      {/* All Issued Items Tab */}
+      {activeTab === "issued" && (
+        <>
+          <h3>📋 All Issued Items</h3>
+          
+          {/* Summary Cards */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '15px',
+            marginBottom: '20px'
+          }}>
+            <div style={{
+              background: '#e3f2fd',
+              border: '1px solid #2196f3',
+              borderRadius: '8px',
+              padding: '15px',
+              textAlign: 'center'
+            }}>
+              <h4 style={{ margin: '0 0 5px 0', color: '#1976d2' }}>📊 Total Records</h4>
+              <p style={{ margin: '0', fontSize: '24px', fontWeight: 'bold', color: '#1976d2' }}>
+                {records.length}
+              </p>
+            </div>
+            <div style={{
+              background: '#e8f5e8',
+              border: '1px solid #4caf50',
+              borderRadius: '8px',
+              padding: '15px',
+              textAlign: 'center'
+            }}>
+              <h4 style={{ margin: '0 0 5px 0', color: '#388e3c' }}>👷 Employees</h4>
+              <p style={{ margin: '0', fontSize: '24px', fontWeight: 'bold', color: '#388e3c' }}>
+                {getUniqueEmployees().length}
+              </p>
+            </div>
+            <div style={{
+              background: '#fff3e0',
+              border: '1px solid #ff9800',
+              borderRadius: '8px',
+              padding: '15px',
+              textAlign: 'center'
+            }}>
+              <h4 style={{ margin: '0 0 5px 0', color: '#f57c00' }}>🏗️ Sites</h4>
+              <p style={{ margin: '0', fontSize: '24px', fontWeight: 'bold', color: '#f57c00' }}>
+                {getUniqueSites().length}
+              </p>
+            </div>
+            <div style={{
+              background: '#fce4ec',
+              border: '1px solid #e91e63',
+              borderRadius: '8px',
+              padding: '15px',
+              textAlign: 'center'
+            }}>
+              <h4 style={{ margin: '0 0 5px 0', color: '#c2185b' }}>📦 Unique Items</h4>
+              <p style={{ margin: '0', fontSize: '24px', fontWeight: 'bold', color: '#c2185b' }}>
+                {getUniqueItems().length}
+              </p>
+            </div>
+          </div>
+          
+          {/* Filter by item */}
+          <div className="form-group">
+            <label>🔍 Filter by Item</label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <input
+                type="text"
+                value={filterItem}
+                onChange={(e) => setFilterItem(e.target.value)}
+                placeholder="Search items..."
+                style={{
+                  minHeight: '45px',
+                  fontSize: '16px',
+                  padding: '10px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  flex: '1',
+                  boxSizing: 'border-box'
+                }}
+              />
+              {filterItem && (
+                <button
+                  onClick={() => setFilterItem("")}
+                  style={{
+                    minHeight: '45px',
+                    padding: '10px 15px',
+                    background: '#dc3545',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  ❌ Clear
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Employee History Tab */}
+      {activeTab === "employee-history" && (
+        <>
+          <h3>👷 Employee History</h3>
+          
+          {/* Employee selector */}
+          <div className="form-group">
+            <label>👷 Select Employee</label>
+            <Select
+              options={getUniqueEmployees().map(emp => ({ value: emp, label: emp }))}
+              value={filterEmployee ? { value: filterEmployee, label: filterEmployee } : null}
+              onChange={(option) => setFilterEmployee(option ? option.value : "")}
+              placeholder="Select employee to view history..."
+              isClearable
+              isSearchable
+              menuPosition="fixed"
+              menuPortalTarget={document.body}
+              styles={{
+                control: (provided) => ({
+                  ...provided,
+                  minHeight: '45px',
+                  fontSize: '16px'
+                }),
+                option: (provided) => ({
+                  ...provided,
+                  fontSize: '16px',
+                  padding: '10px'
+                }),
+                menuPortal: (provided) => ({
+                  ...provided,
+                  zIndex: 9999
+                })
+              }}
+            />
+          </div>
+          
+          {filterEmployee && (
+            <div style={{
+              background: '#f8f9fa',
+              border: '1px solid #dee2e6',
+              borderRadius: '4px',
+              padding: '15px',
+              marginBottom: '15px'
+            }}>
+              <h4>📊 Summary for {filterEmployee}</h4>
+              <p><strong>Total Items Issued:</strong> {getFilteredRecords().length}</p>
+              <p><strong>Total Quantity:</strong> {getFilteredRecords().reduce((sum, rec) => sum + rec.quantity, 0)}</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Site History Tab */}
+      {activeTab === "site-history" && (
+        <>
+          <h3>🏗️ Site History</h3>
+          
+          {/* Site selector */}
+          <div className="form-group">
+            <label>🏗️ Select Site</label>
+            <Select
+              options={getUniqueSites().map(site => ({ value: site, label: site }))}
+              value={filterSite ? { value: filterSite, label: filterSite } : null}
+              onChange={(option) => setFilterSite(option ? option.value : "")}
+              placeholder="Select site to view history..."
+              isClearable
+              isSearchable
+              menuPosition="fixed"
+              menuPortalTarget={document.body}
+              styles={{
+                control: (provided) => ({
+                  ...provided,
+                  minHeight: '45px',
+                  fontSize: '16px'
+                }),
+                option: (provided) => ({
+                  ...provided,
+                  fontSize: '16px',
+                  padding: '10px'
+                }),
+                menuPortal: (provided) => ({
+                  ...provided,
+                  zIndex: 9999
+                })
+              }}
+            />
+          </div>
+          
+          {filterSite && (
+            <div style={{
+              background: '#f8f9fa',
+              border: '1px solid #dee2e6',
+              borderRadius: '4px',
+              padding: '15px',
+              marginBottom: '15px'
+            }}>
+              <h4>📊 Summary for {filterSite}</h4>
+              <p><strong>Total Items Issued:</strong> {getFilteredRecords().length}</p>
+              <p><strong>Total Quantity:</strong> {getFilteredRecords().reduce((sum, rec) => sum + rec.quantity, 0)}</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Records Table - Show for all tabs except issue */}
+      {activeTab !== "issue" && (
+        <>
+          {(() => {
+            const filteredRecords = getFilteredRecords();
+            return filteredRecords.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px',
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #dee2e6'
+              }}>
+                <p style={{ fontSize: '18px', color: '#6c757d' }}>
+                  {activeTab === "employee-history" && !filterEmployee ? "👷 Select an employee to view their history" :
+                   activeTab === "site-history" && !filterSite ? "🏗️ Select a site to view its history" :
+                   "📭 No records found"}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div style={{
+                  background: '#e8f5e8',
+                  border: '1px solid #4caf50',
+                  borderRadius: '4px',
+                  padding: '10px',
+                  marginBottom: '15px',
+                  textAlign: 'center'
+                }}>
+                  <strong>📊 Showing {filteredRecords.length} record(s)</strong>
+                  {activeTab === "employee-history" && filterEmployee && (
+                    <span> for employee: <strong>{filterEmployee}</strong></span>
                   )}
-                </td>
-                <td>{rec.date}</td>
-                <td>
-                  <button 
-                    className="return-btn" 
-                    onClick={() => handleReturnItem(rec)}
-                    title="Return items to stock"
-                  >
-                    🔄 Return
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  {activeTab === "site-history" && filterSite && (
+                    <span> for site: <strong>{filterSite}</strong></span>
+                  )}
+                  {filterItem && (
+                    <span> matching: <strong>"{filterItem}"</strong></span>
+                  )}
+                </div>
+                
+                <table className="issue-table">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Employee / Site</th>
+                      <th>Superior</th>
+                      <th>Item</th>
+                      <th>Qty</th>
+                      <th>Proof</th>
+                      <th>Date</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRecords.map((rec, index) => (
+                      <tr key={index}>
+                        <td>
+                          <span style={{
+                            background: rec.type === "employee" ? '#007bff' : '#28a745',
+                            color: 'white',
+                            padding: '4px 8px',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                          }}>
+                            {rec.type === "employee" ? "👷 EMP" : "🏗️ SITE"}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: 'bold' }}>
+                          {rec.type === "employee" ? rec.employee : rec.site}
+                        </td>
+                        <td>{rec.type === "site" ? rec.superior : "-"}</td>
+                        <td>{rec.item}</td>
+                        <td style={{ 
+                          fontWeight: 'bold',
+                          color: '#007bff'
+                        }}>
+                          {rec.quantity}
+                        </td>
+                        <td>
+                          {rec.proof && (
+                            <img src={rec.proof} alt="Proof" className="proof-thumbnail" />
+                          )}
+                        </td>
+                        <td style={{ fontSize: '12px' }}>{rec.date}</td>
+                        <td>
+                          <button 
+                            className="return-btn" 
+                            onClick={() => handleReturnItem(rec)}
+                            title="Return items to stock"
+                          >
+                            🔄 Return
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            );
+          })()}
+        </>
       )}
 
       {/* Return Modal */}
