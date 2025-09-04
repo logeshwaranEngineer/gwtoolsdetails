@@ -764,10 +764,27 @@ export default function AddRemove({ goBack, user }) {
       alert(`Duplicate labels are not allowed:\n- ${dups.join("\n- ")}`);
       return;
     }
+    
     try {
-      const toSave = Array.isArray(templates) ? templates : [[]];
+      // Filter out empty labels before saving
+      const currentTemplate = Array.isArray(templates[0]) ? templates[0] : [];
+      const filteredTemplate = currentTemplate.filter(field => 
+        field.label && field.label.trim() !== ""
+      );
+      
+      // Check if there are any valid labels to save
+      if (filteredTemplate.length === 0) {
+        alert("⚠️ Please add at least one label with a name before saving the template.");
+        return;
+      }
+      
+      const toSave = [filteredTemplate];
       localStorage.setItem("templates", JSON.stringify(toSave));
-      alert("Template saved");
+      
+      // Update the current template state to remove empty fields
+      setTemplates(toSave);
+      
+      alert(`✅ Template saved successfully!\n\nSaved ${filteredTemplate.length} field(s):\n- ${filteredTemplate.map(f => f.label).join('\n- ')}`);
       setShowTemplateModal(false);
     } catch (e) {
       console.error("Save template failed", e);
@@ -1441,12 +1458,33 @@ export default function AddRemove({ goBack, user }) {
             </button>
 
             <div className="modal-actions">
-              <button
-                onClick={saveTemplate}
-                disabled={duplicateTemplateLabels.size > 0}
-              >
-                ✅ Save Template
-              </button>
+              {(() => {
+                const validFields = (templates[0] || []).filter(field => 
+                  field.label && field.label.trim() !== ""
+                );
+                const hasValidFields = validFields.length > 0;
+                const hasDuplicates = duplicateTemplateLabels.size > 0;
+                
+                return (
+                  <button
+                    onClick={saveTemplate}
+                    disabled={hasDuplicates}
+                    style={{
+                      opacity: hasDuplicates ? 0.5 : 1,
+                      backgroundColor: hasValidFields ? '#28a745' : '#6c757d'
+                    }}
+                    title={
+                      hasDuplicates 
+                        ? "Remove duplicate labels before saving" 
+                        : hasValidFields 
+                          ? `Save ${validFields.length} field(s) to template`
+                          : "Add at least one label before saving"
+                    }
+                  >
+                    ✅ Save Template {hasValidFields ? `(${validFields.length})` : ''}
+                  </button>
+                );
+              })()}
               <button onClick={() => setShowTemplateModal(false)}>
                 ❌ Cancel
               </button>
