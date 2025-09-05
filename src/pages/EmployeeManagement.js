@@ -52,6 +52,8 @@ export default function EmployeeManagement({
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [streaming, setStreaming] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState("user"); // 'user' (front) | 'environment' (back)
+  const [showCameraChoice, setShowCameraChoice] = useState(false);
 
   const [records, setRecords] = useState([]);
   const [availableItems, setAvailableItems] = useState([]);
@@ -158,17 +160,55 @@ export default function EmployeeManagement({
       });
     }
   };
-  // 📷 Start webcam
-  const startCamera = async () => {
+  // Stop current camera stream if any
+  const stopCamera = () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const video = videoRef.current;
+      const stream = video && video.srcObject;
+      if (stream) {
+        const tracks = stream.getTracks();
+        tracks.forEach((t) => t.stop());
+        if (video) video.srcObject = null;
+      }
+      setStreaming(false);
+    } catch (e) {
+      // no-op
+    }
+  };
+
+  // 📷 Start webcam with desired facing mode
+  const startCamera = async (facing = cameraFacing) => {
+    try {
+      // Stop previous stream before starting a new one
+      stopCamera();
+
+      const constraints = {
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      };
+
+      // Some desktop browsers ignore facingMode; they may still open default camera
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setStreaming(true);
+        setCameraFacing(facing);
+        setShowCameraChoice(false);
       }
     } catch (err) {
       console.error("Camera access denied:", err);
+      alert("Unable to access the camera. Please allow permissions or try a different device.");
     }
+  };
+
+  // 🔄 Switch between front and back cameras
+  const toggleCameraFacing = async () => {
+    const next = cameraFacing === 'user' ? 'environment' : 'user';
+    await startCamera(next);
   };
 
   // 🎞️ Capture from webcam
@@ -919,14 +959,39 @@ export default function EmployeeManagement({
             {/* Camera Section */}
             <div style={{ marginTop: "10px" }}>
               {!streaming && (
-                <button type="button" onClick={startCamera}>
-                  Start Camera
-                </button>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {!showCameraChoice && (
+                    <button type="button" onClick={() => setShowCameraChoice(true)}>
+                      Start Camera
+                    </button>
+                  )}
+                  {showCameraChoice && (
+                    <>
+                      <button type="button" onClick={() => startCamera('user')}>
+                        Front Camera
+                      </button>
+                      <button type="button" onClick={() => startCamera('environment')}>
+                        Back Camera
+                      </button>
+                      <button type="button" onClick={() => setShowCameraChoice(false)}>
+                        Cancel
+                      </button>
+                    </>
+                  )}
+                </div>
               )}
               {streaming && (
-                <button type="button" onClick={capturePhoto}>
-                  Capture Photo
-                </button>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button type="button" onClick={capturePhoto}>
+                    Capture Photo
+                  </button>
+                  <button type="button" onClick={toggleCameraFacing}>
+                    Switch Camera ({cameraFacing === 'user' ? 'Front' : 'Back'})
+                  </button>
+                  <button type="button" onClick={stopCamera}>
+                    Stop Camera
+                  </button>
+                </div>
               )}
             </div>
 
