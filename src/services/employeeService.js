@@ -86,6 +86,57 @@ class EmployeeService {
   }
 
   // === API Methods (using Axios) ===
+  // Employee names endpoints
+  async getAllEmployeesAPI() {
+    try {
+      const response = await axios.get(`${API_CONFIG.baseUrl}/employees`, {
+        timeout: API_CONFIG.timeout,
+        headers: API_CONFIG.headers,
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async addEmployeeAPI(name) {
+    try {
+      const response = await axios.post(
+        `${API_CONFIG.baseUrl}/employees`,
+        { name },
+        { timeout: API_CONFIG.timeout, headers: API_CONFIG.headers }
+      );
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async deleteEmployeeAPI(id) {
+    try {
+      const response = await axios.delete(
+        `${API_CONFIG.baseUrl}/employees/${id}`,
+        { timeout: API_CONFIG.timeout, headers: API_CONFIG.headers }
+      );
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async deleteEmployeeByNameAPI(name) {
+    try {
+      const response = await axios.delete(
+        `${API_CONFIG.baseUrl}/employees/by-name/${encodeURIComponent(name)}`,
+        { timeout: API_CONFIG.timeout, headers: API_CONFIG.headers }
+      );
+      return { success: true, data: response.data };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Employee records endpoints
   async saveRecordAPI(record) {
     try {
       const response = await axios.post(

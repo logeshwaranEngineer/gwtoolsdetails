@@ -435,10 +435,10 @@ export default function AddRemove({ goBack, user }) {
       alert("Category required");
       return;
     }
-    if (!form.image) {
-      alert("Image required");
-      return;
-    }
+    // if (!form.image) {
+    //   alert("Image required");
+    //   return;
+    // }
 
     const safeDynamicFields = (
       Array.isArray(form.dynamicFields) ? form.dynamicFields : []
@@ -450,7 +450,8 @@ export default function AddRemove({ goBack, user }) {
       names: (Array.isArray(form.names) ? form.names : []).filter(
         (n) => (n || "").trim() !== ""
       ),
-      image: form.image,
+      // Prefer explicit form.image; fallback to proof preview if present
+      image: form.image || (proof && proof.preview) || null,
       dynamicFields: safeDynamicFields,
       date: new Date().toISOString(),
     };
@@ -490,6 +491,72 @@ export default function AddRemove({ goBack, user }) {
   const [showImageOptions, setShowImageOptions] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+  // --- Proof Upload State + Logic ---
+  const [proof, setProof] = useState(null);
+  const [streaming, setStreaming] = useState(false);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+
+  // 📂 Handle file upload
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const preview = URL.createObjectURL(file);
+      setProof({
+        preview,
+        file,
+      });
+      // Persist a stable Data URL for saved items (object URLs break after reload)
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setForm((prev) => ({
+          ...prev,
+          image: ev.target?.result || null,
+          imageFile: file,
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // 📷 Start webcam
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setStreaming(true);
+      }
+    } catch (err) {
+      console.error("Camera access denied:", err);
+    }
+  };
+
+  // 🎞️ Capture from webcam
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (video && canvas) {
+      const ctx = canvas.getContext("2d");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const dataUrl = canvas.toDataURL("image/png");
+
+      setProof({
+        preview: dataUrl,
+        file: null,
+      });
+
+      // Sync to form so saved item has image from camera
+      setForm((prev) => ({
+        ...prev,
+        image: dataUrl,
+        imageFile: null,
+      }));
+    }
+  };
 
   const handleImageSelect = () => {
     // For iOS Safari, show custom modal instead of confirm dialog
@@ -764,27 +831,33 @@ export default function AddRemove({ goBack, user }) {
       alert(`Duplicate labels are not allowed:\n- ${dups.join("\n- ")}`);
       return;
     }
-    
+
     try {
       // Filter out empty labels before saving
       const currentTemplate = Array.isArray(templates[0]) ? templates[0] : [];
-      const filteredTemplate = currentTemplate.filter(field => 
-        field.label && field.label.trim() !== ""
+      const filteredTemplate = currentTemplate.filter(
+        (field) => field.label && field.label.trim() !== ""
       );
-      
+
       // Check if there are any valid labels to save
       if (filteredTemplate.length === 0) {
-        alert("⚠️ Please add at least one label with a name before saving the template.");
+        alert(
+          "⚠️ Please add at least one label with a name before saving the template."
+        );
         return;
       }
-      
+
       const toSave = [filteredTemplate];
       localStorage.setItem("templates", JSON.stringify(toSave));
-      
+
       // Update the current template state to remove empty fields
       setTemplates(toSave);
-      
-      alert(`✅ Template saved successfully!\n\nSaved ${filteredTemplate.length} field(s):\n- ${filteredTemplate.map(f => f.label).join('\n- ')}`);
+
+      alert(
+        `✅ Template saved successfully!\n\nSaved ${
+          filteredTemplate.length
+        } field(s):\n- ${filteredTemplate.map((f) => f.label).join("\n- ")}`
+      );
       setShowTemplateModal(false);
     } catch (e) {
       console.error("Save template failed", e);
@@ -1009,15 +1082,58 @@ export default function AddRemove({ goBack, user }) {
           <div className="modal">
             <h3>{editingItem ? "Edit Item" : "➕ Add Item"}</h3>
 
-            {/* Image Selection */}
+            {/* Proof */}
             <div className="form-group">
-              <label>Image (Required)*</label>
-              {form.image && (
-                <img src={form.image} alt="preview" className="preview" />
+              <label>📷 Capture / Upload Proof</label>
+
+              {/* Hidden File Input */}
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+              />
+
+              {/* Camera Section */}
+              <div style={{ marginTop: "10px" }}>
+                {!streaming && (
+                  <button type="button" onClick={startCamera}>
+                    Start Camera
+                  </button>
+                )}
+                {streaming && (
+                  <button type="button" onClick={capturePhoto}>
+                    Capture Photo
+                  </button>
+                )}
+              </div>
+
+              {/* Live Video */}
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                style={{
+                  width: "100%",
+                  maxWidth: "300px",
+                  marginTop: "10px",
+                  borderRadius: "6px",
+                }}
+              ></video>
+
+              <canvas ref={canvasRef} style={{ display: "none" }}></canvas>
+
+              {/* Preview */}
+              {proof && (
+                <div className="proof-preview" style={{ marginTop: "5px" }}>
+                  <img
+                    src={proof.preview}
+                    alt="Proof"
+                    className="proof-img"
+                    style={{ maxWidth: "30%", borderRadius: "6px" }}
+                  />
+                </div>
               )}
-              <button type="button" onClick={handleImageSelect}>
-                📸 Capture / 📂 Upload
-              </button>
             </div>
 
             {/* Category */}
@@ -1459,29 +1575,30 @@ export default function AddRemove({ goBack, user }) {
 
             <div className="modal-actions">
               {(() => {
-                const validFields = (templates[0] || []).filter(field => 
-                  field.label && field.label.trim() !== ""
+                const validFields = (templates[0] || []).filter(
+                  (field) => field.label && field.label.trim() !== ""
                 );
                 const hasValidFields = validFields.length > 0;
                 const hasDuplicates = duplicateTemplateLabels.size > 0;
-                
+
                 return (
                   <button
                     onClick={saveTemplate}
                     disabled={hasDuplicates}
                     style={{
                       opacity: hasDuplicates ? 0.5 : 1,
-                      backgroundColor: hasValidFields ? '#28a745' : '#6c757d'
+                      backgroundColor: hasValidFields ? "#28a745" : "#6c757d",
                     }}
                     title={
-                      hasDuplicates 
-                        ? "Remove duplicate labels before saving" 
-                        : hasValidFields 
-                          ? `Save ${validFields.length} field(s) to template`
-                          : "Add at least one label before saving"
+                      hasDuplicates
+                        ? "Remove duplicate labels before saving"
+                        : hasValidFields
+                        ? `Save ${validFields.length} field(s) to template`
+                        : "Add at least one label before saving"
                     }
                   >
-                    ✅ Save Template {hasValidFields ? `(${validFields.length})` : ''}
+                    ✅ Save Template{" "}
+                    {hasValidFields ? `(${validFields.length})` : ""}
                   </button>
                 );
               })()}
@@ -1618,7 +1735,7 @@ export default function AddRemove({ goBack, user }) {
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        style={{ display: 'none' }}
+        style={{ display: "none" }}
         onChange={handleImageChange}
       />
       <input
@@ -1626,55 +1743,65 @@ export default function AddRemove({ goBack, user }) {
         type="file"
         accept="image/*"
         capture="environment"
-        style={{ display: 'none' }}
+        style={{ display: "none" }}
         onChange={handleImageChange}
       />
 
       {/* Custom Image Options Modal for iOS Safari */}
       {showImageOptions && (
         <div className="modal-overlay">
-          <div className="modal" style={{ maxWidth: '300px', textAlign: 'center' }}>
+          <div
+            className="modal"
+            style={{ maxWidth: "300px", textAlign: "center" }}
+          >
             <h3>📸 Select Image Source</h3>
             <p>Choose how you want to add an image:</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', margin: '20px 0' }}>
-              <button 
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+                margin: "20px 0",
+              }}
+            >
+              <button
                 onClick={handleCameraCapture}
-                style={{ 
-                  padding: '15px', 
-                  fontSize: '16px', 
-                  backgroundColor: '#007bff', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '8px',
-                  cursor: 'pointer'
+                style={{
+                  padding: "15px",
+                  fontSize: "16px",
+                  backgroundColor: "#007bff",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  cursor: "pointer",
                 }}
               >
                 📸 Take Photo
               </button>
-              <button 
+              <button
                 onClick={handleFileUpload}
-                style={{ 
-                  padding: '15px', 
-                  fontSize: '16px', 
-                  backgroundColor: '#28a745', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '8px',
-                  cursor: 'pointer'
+                style={{
+                  padding: "15px",
+                  fontSize: "16px",
+                  backgroundColor: "#28a745",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  cursor: "pointer",
                 }}
               >
                 📂 Choose from Files
               </button>
-              <button 
+              <button
                 onClick={() => setShowImageOptions(false)}
-                style={{ 
-                  padding: '10px', 
-                  fontSize: '14px', 
-                  backgroundColor: '#6c757d', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '8px',
-                  cursor: 'pointer'
+                style={{
+                  padding: "10px",
+                  fontSize: "14px",
+                  backgroundColor: "#6c757d",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  cursor: "pointer",
                 }}
               >
                 ❌ Cancel

@@ -3,12 +3,12 @@
 // Storage Configuration
 export const STORAGE_CONFIG = {
   // Set to 'api' to use Axios API calls, 'indexeddb' for local database, 'localstorage' for simple storage
-  method: 'indexeddb', // Options: 'api', 'indexeddb', 'localstorage'
+  method: 'api', // Options: 'api', 'indexeddb', 'localstorage'
   
   // API Configuration (when method is 'api')
   api: {
-    baseUrl: 'http://localhost:3001/api',
-    timeout: 10000,
+    baseUrl: 'http://localhost:5000',
+    timeout: 15000,
     headers: {
       'Content-Type': 'application/json',
     }
