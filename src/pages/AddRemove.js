@@ -495,6 +495,7 @@ export default function AddRemove({ goBack, user }) {
   const [proof, setProof] = useState(null);
   const [streaming, setStreaming] = useState(false);
   const [cameraFacing, setCameraFacing] = useState("user"); // 'user' | 'environment'
+  const [showCameraChoice, setShowCameraChoice] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -549,6 +550,7 @@ export default function AddRemove({ goBack, user }) {
         videoRef.current.srcObject = stream;
         setStreaming(true);
         setCameraFacing(facing);
+        setShowCameraChoice(false);
       }
     } catch (err) {
       console.error("Camera access denied:", err);
@@ -1138,23 +1140,35 @@ export default function AddRemove({ goBack, user }) {
               <div style={{ marginTop: "10px" }}>
                 {!streaming && (
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button type="button" onClick={() => startCamera('user')} title="Start Front Camera">
-                      📷 Front
-                    </button>
-                    <button type="button" onClick={() => startCamera('environment')} title="Start Back Camera">
-                      📷 Back
-                    </button>
+                    {!showCameraChoice && (
+                      <button type="button" onClick={() => setShowCameraChoice(true)} className="issue-btn" title="Start Camera">
+                        📷 Start Camera
+                      </button>
+                    )}
+                    {showCameraChoice && (
+                      <>
+                        <button type="button" onClick={() => startCamera('user')} className="issue-btn" title="Front Camera">
+                          Front
+                        </button>
+                        <button type="button" onClick={() => startCamera('environment')} className="issue-btn" title="Back Camera">
+                          Back
+                        </button>
+                        <button type="button" onClick={() => setShowCameraChoice(false)} className="reset-btn" title="Cancel">
+                          Cancel
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
                 {streaming && (
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button type="button" onClick={capturePhoto} title="Capture Photo">
-                      ⬇️ Capture
+                    <button type="button" onClick={capturePhoto} className="issue-btn" title="Capture Photo">
+                      ✅ Capture
                     </button>
-                    <button type="button" onClick={toggleCameraFacing} title="Switch Camera">
+                    <button type="button" onClick={toggleCameraFacing} className="add-stock-btn" title="Switch Camera">
                       🔄 Switch ({cameraFacing === 'user' ? 'Front' : 'Back'})
                     </button>
-                    <button type="button" onClick={stopCamera} title="Stop Camera">
+                    <button type="button" onClick={stopCamera} className="reset-btn" title="Stop Camera">
                       ✖️ Stop
                     </button>
                   </div>

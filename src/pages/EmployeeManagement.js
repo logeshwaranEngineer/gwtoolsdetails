@@ -971,19 +971,19 @@ export default function EmployeeManagement({
               {!streaming && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {!showCameraChoice && (
-                    <button type="button" onClick={() => setShowCameraChoice(true)}>
-                      Start Camera
+                    <button type="button" onClick={() => setShowCameraChoice(true)} className="issue-btn">
+                      📷 Start Camera
                     </button>
                   )}
                   {showCameraChoice && (
                     <>
-                      <button type="button" onClick={() => startCamera('user')}>
-                        Front Camera
+                      <button type="button" onClick={() => startCamera('user')} className="issue-btn">
+                        Front
                       </button>
-                      <button type="button" onClick={() => startCamera('environment')}>
-                        Back Camera
+                      <button type="button" onClick={() => startCamera('environment')} className="issue-btn">
+                        Back
                       </button>
-                      <button type="button" onClick={() => setShowCameraChoice(false)}>
+                      <button type="button" onClick={() => setShowCameraChoice(false)} className="reset-btn">
                         Cancel
                       </button>
                     </>
@@ -992,14 +992,14 @@ export default function EmployeeManagement({
               )}
               {streaming && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button type="button" onClick={capturePhoto}>
-                    Capture Photo
+                  <button type="button" onClick={capturePhoto} className="issue-btn">
+                    ✅ Capture
                   </button>
-                  <button type="button" onClick={toggleCameraFacing}>
-                    Switch Camera ({cameraFacing === 'user' ? 'Front' : 'Back'})
+                  <button type="button" onClick={toggleCameraFacing} className="add-stock-btn">
+                    🔄 Switch ({cameraFacing === 'user' ? 'Front' : 'Back'})
                   </button>
-                  <button type="button" onClick={stopCamera}>
-                    Stop Camera
+                  <button type="button" onClick={stopCamera} className="reset-btn">
+                    ✖️ Stop
                   </button>
                 </div>
               )}
