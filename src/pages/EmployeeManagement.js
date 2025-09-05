@@ -4,7 +4,16 @@ import "../style/Employee.css";
 import { getEmployees, saveEmployees } from "../utils/storage";
 import { defaultEmployees } from "../data/employees";
 import { getAllItems, saveItemToDB } from "../server/db";
+import {
+  getSitesFromDB,
+  saveSitesToDB,
+  getSuperiorsFromDB,
+  saveSuperiorsToDB,
+  getAllEmpRecordsFromDB,
+  addEmpRecordToDB,
+} from "../server/empMgmtDb";
 import Select from "react-select";
+import CreatableSelect from "react-select/creatable";
 import employeeService from "../services/employeeService";
 import stockService from "../services/stockService";
 import { isUsingAPI } from "../config/storage";
@@ -13,8 +22,8 @@ import {
   saveEmployeeRecords,
 } from "../utils/recordsStorage";
 
-// 🔹 Sites List
-const sites = [
+// 🔹 Sites & Superiors (loaded from localStorage with defaults)
+const DEFAULT_SITES = [
   "IWMF",
   "CORA",
   "VSMC SITE",
@@ -27,9 +36,7 @@ const sites = [
   "SITE LAYDOWN BANYAN",
   "WAN CHENG(OFFICE COME)",
 ];
-
-// 🔹 Example Superiors
-const superiors = ["Mr. Raj", "Mr. Kumar", "Mr. Tan", "Mr. Wong"];
+const DEFAULT_SUPERIORS = ["Mr. Raj", "Mr. Kumar", "Mr. Tan", "Mr. Wong"];
 
 export default function EmployeeManagement({
   goBack,
@@ -40,6 +47,17 @@ export default function EmployeeManagement({
   const [mode, setMode] = useState("employee"); // "employee" | "site"
   const [employees, setEmployees] = useState([]);
   const [employee, setEmployee] = useState(null);
+
+  const [sites, setSites] = useState(() => {
+    const saved = localStorage.getItem('emp_mgmt_sites');
+    const parsed = saved ? JSON.parse(saved) : null;
+    return Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_SITES;
+  });
+  const [superiors, setSuperiors] = useState(() => {
+    const saved = localStorage.getItem('emp_mgmt_superiors');
+    const parsed = saved ? JSON.parse(saved) : null;
+    return Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_SUPERIORS;
+  });
 
   const [selectedSite, setSelectedSite] = useState(null);
   const [selectedSuperior, setSelectedSuperior] = useState(null);
@@ -70,13 +88,12 @@ export default function EmployeeManagement({
   // === Load employees and items from AddRemove ===
   useEffect(() => {
     (async () => {
-      // Load employees list (API preferred)
+      // Load employees list (API preferred) - unchanged
       if (isUsingAPI()) {
         const resp = await employeeService.getAllEmployeesAPI();
         if (resp?.success && Array.isArray(resp.data)) {
           setEmployees(resp.data.map(e => e.name));
         } else {
-          // fallback to local storage defaults if API fails
           const list = getEmployees();
           setEmployees(list && list.length > 0 ? list : defaultEmployees);
         }
@@ -85,21 +102,57 @@ export default function EmployeeManagement({
         setEmployees(list && list.length > 0 ? list : defaultEmployees);
       }
 
+      // Load Sites & Superiors from device DB first, fallback to localStorage defaults
+      try {
+        const [dbSites, dbSupers] = await Promise.all([
+          getSitesFromDB(),
+          getSuperiorsFromDB(),
+        ]);
+        if (Array.isArray(dbSites) && dbSites.length) setSites(dbSites);
+        if (Array.isArray(dbSupers) && dbSupers.length) setSuperiors(dbSupers);
+      } catch {}
+
       // Load items from AddRemove database
       await loadAvailableItems();
 
-      // Load records from API (DB) if configured, otherwise from local
+      // Load records: prefer API; else use dedicated EmpMgmt DB; fallback to local records util
       if (isUsingAPI()) {
         const resp = await employeeService.getAllRecords();
         if (resp?.success && Array.isArray(resp.data)) {
           setRecords(resp.data);
         }
       } else {
+        try {
+          const deviceRecords = await getAllEmpRecordsFromDB();
+          if (Array.isArray(deviceRecords)) {
+            setRecords(deviceRecords);
+            return;
+          }
+        } catch {}
         const saved = await getEmployeeRecords();
         if (saved && Array.isArray(saved)) setRecords(saved);
       }
     })();
   }, []);
+
+  // Persist sites & superiors to device whenever they change
+  useEffect(() => {
+    (async () => {
+      if (Array.isArray(sites)) {
+        localStorage.setItem('emp_mgmt_sites', JSON.stringify(sites));
+        try { await saveSitesToDB(sites); } catch {}
+      }
+    })();
+  }, [sites]);
+
+  useEffect(() => {
+    (async () => {
+      if (Array.isArray(superiors)) {
+        localStorage.setItem('emp_mgmt_superiors', JSON.stringify(superiors));
+        try { await saveSuperiorsToDB(superiors); } catch {}
+      }
+    })();
+  }, [superiors]);
 
   // Load items from AddRemove database
   const loadAvailableItems = async () => {
@@ -316,12 +369,18 @@ export default function EmployeeManagement({
         originalItem: selectedItem.originalItem,
       };
 
-      // Persist to DB when API mode; else keep local state
+      // Persist to device DB always; also try API when enabled
+      try {
+        await addEmpRecordToDB(newRecord);
+      } catch (e) {
+        console.warn('Device DB save failed, falling back to state only', e);
+      }
+
       if (isUsingAPI()) {
         const resp = await employeeService.saveRecord(newRecord);
         if (!resp?.success) {
           console.error("Save to API failed:", resp?.error);
-          alert("❌ Failed to save to server. Record kept locally.");
+          alert("❌ Failed to save to server. Record kept on device only.");
         }
       }
 
@@ -754,11 +813,22 @@ export default function EmployeeManagement({
             <>
               <div className="form-group">
                 <label>🏗️ Site</label>
-                <Select
+                <CreatableSelect
                   options={sites.map((s) => ({ value: s, label: s }))}
                   value={selectedSite}
                   onChange={(opt) => setSelectedSite(opt)}
-                  placeholder="Select site..."
+                  onCreateOption={async (inputValue) => {
+                    const newVal = inputValue.trim();
+                    if (!newVal) return;
+                    if (!sites.includes(newVal)) {
+                      const next = [...sites, newVal].sort((a,b)=>a.localeCompare(b));
+                      setSites(next);
+                      localStorage.setItem('emp_mgmt_sites', JSON.stringify(next));
+                      try { await saveSitesToDB(next); } catch {}
+                    }
+                    setSelectedSite({ value: newVal, label: newVal });
+                  }}
+                  placeholder="Select or type to add site..."
                   isSearchable
                   menuPosition="fixed"
                   menuPortalTarget={document.body}
@@ -783,11 +853,22 @@ export default function EmployeeManagement({
 
               <div className="form-group">
                 <label>👨‍💼 Superior</label>
-                <Select
+                <CreatableSelect
                   options={superiors.map((sup) => ({ value: sup, label: sup }))}
                   value={selectedSuperior}
                   onChange={(opt) => setSelectedSuperior(opt)}
-                  placeholder="Select superior..."
+                  onCreateOption={async (inputValue) => {
+                    const newVal = inputValue.trim();
+                    if (!newVal) return;
+                    if (!superiors.includes(newVal)) {
+                      const next = [...superiors, newVal].sort((a,b)=>a.localeCompare(b));
+                      setSuperiors(next);
+                      localStorage.setItem('emp_mgmt_superiors', JSON.stringify(next));
+                      try { await saveSuperiorsToDB(next); } catch {}
+                    }
+                    setSelectedSuperior({ value: newVal, label: newVal });
+                  }}
+                  placeholder="Select or type to add superior..."
                   isSearchable
                   menuPosition="fixed"
                   menuPortalTarget={document.body}
