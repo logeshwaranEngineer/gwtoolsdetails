@@ -227,8 +227,18 @@ export default function EmployeeManagement({
         preview: dataUrl,
         file: null, // you can convert base64 → File if needed for upload
       });
+
+      // Auto stop camera after capturing
+      stopCamera();
     }
   };
+
+  // Stop camera when component unmounts
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
   const handleAddRecord = async () => {
     if (mode === "employee") {
       if (!employee || !selectedItem || !quantity || !proof) {

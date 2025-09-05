@@ -494,6 +494,7 @@ export default function AddRemove({ goBack, user }) {
   // --- Proof Upload State + Logic ---
   const [proof, setProof] = useState(null);
   const [streaming, setStreaming] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState("user"); // 'user' | 'environment'
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -519,18 +520,54 @@ export default function AddRemove({ goBack, user }) {
     }
   };
 
-  // 📷 Start webcam
-  const startCamera = async () => {
+  const stopCamera = () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const video = videoRef.current;
+      const stream = video && video.srcObject;
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+        if (video) video.srcObject = null;
+      }
+      setStreaming(false);
+    } catch {}
+  };
+
+  // 📷 Start webcam with facing mode
+  const startCamera = async (facing = cameraFacing) => {
+    try {
+      stopCamera();
+      const constraints = {
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setStreaming(true);
+        setCameraFacing(facing);
       }
     } catch (err) {
       console.error("Camera access denied:", err);
+      alert("Unable to access the camera. Please allow permissions.");
     }
   };
+
+  const toggleCameraFacing = async () => {
+    const next = cameraFacing === 'user' ? 'environment' : 'user';
+    await startCamera(next);
+  };
+
+  // Stop camera when modal closes or component unmounts
+  useEffect(() => {
+    if (!showModal) stopCamera();
+  }, [showModal]);
+  useEffect(() => {
+    return () => stopCamera();
+  }, []);
 
   // 🎞️ Capture from webcam
   const capturePhoto = () => {
@@ -555,6 +592,9 @@ export default function AddRemove({ goBack, user }) {
         image: dataUrl,
         imageFile: null,
       }));
+
+      // Auto stop after capture
+      stopCamera();
     }
   };
 
@@ -1097,14 +1137,27 @@ export default function AddRemove({ goBack, user }) {
               {/* Camera Section */}
               <div style={{ marginTop: "10px" }}>
                 {!streaming && (
-                  <button type="button" onClick={startCamera}>
-                    Start Camera
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button type="button" onClick={() => startCamera('user')} title="Start Front Camera">
+                      📷 Front
+                    </button>
+                    <button type="button" onClick={() => startCamera('environment')} title="Start Back Camera">
+                      📷 Back
+                    </button>
+                  </div>
                 )}
                 {streaming && (
-                  <button type="button" onClick={capturePhoto}>
-                    Capture Photo
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button type="button" onClick={capturePhoto} title="Capture Photo">
+                      ⬇️ Capture
+                    </button>
+                    <button type="button" onClick={toggleCameraFacing} title="Switch Camera">
+                      🔄 Switch ({cameraFacing === 'user' ? 'Front' : 'Back'})
+                    </button>
+                    <button type="button" onClick={stopCamera} title="Stop Camera">
+                      ✖️ Stop
+                    </button>
+                  </div>
                 )}
               </div>
 
